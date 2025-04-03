@@ -5,11 +5,25 @@
 {% block content %}
     <h1>Your Password Vault</h1>
 
+    <!-- Search Form -->
+    <div style="margin-bottom: 20px;">
+        <form method="GET" action="{{ url_for('vault') }}">
+            <input type="search" name="search_term" placeholder="Search Laptop/Server..." value="{{ search_term or '' }}" style="padding: 8px; min-width: 300px;">
+            <button type="submit" class="inline-button">Search</button>
+            {% if search_term %}
+                <a href="{{ url_for('vault') }}" style="margin-left: 10px;">Clear Search</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <hr>
+
     <h2>Add New Entry</h2>
     <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
         <div class="form-group">
-            <label for="website">Website/App:</label>
-            <input type="text" id="website" name="website" required>
+            <!-- MODIFIED label and input name/id -->
+            <label for="laptop_server">Laptop/Server:</label>
+            <input type="text" id="laptop_server" name="laptop_server" required>
         </div>
         <div class="form-group">
             <label for="entry_username">Username:</label>
@@ -26,12 +40,13 @@
 
     <hr style="margin: 30px 0;">
 
-    <h2>Stored Entries</h2>
+    <h2>Stored Entries {% if search_term %}(Filtered by "{{ search_term }}"){% endif %}</h2>
     {% if entries %}
     <table>
         <thead>
             <tr>
-                <th>Website/App</th>
+                <!-- MODIFIED table header -->
+                <th>Laptop/Server</th>
                 <th>Username</th>
                 <th>Actions</th>
             </tr>
@@ -39,15 +54,14 @@
         <tbody>
             {% for entry in entries %}
             <tr>
-                <td>{{ entry.website }}</td>
+                <!-- MODIFIED field access -->
+                <td>{{ entry.laptop_server }}</td>
                 <td>{{ entry.entry_username }}</td>
                 <td class="actions">
                     <button type="button" class="inline-button show-stored-btn" data-id="{{ entry._id | string }}">Show Password</button>
                     <button type="button" class="inline-button copy-btn" data-id="{{ entry._id | string }}">Copy Password</button>
-                    <!-- Update requires more complex UI (modal or separate page), skipping for simplicity -->
-                    <!-- Delete Form -->
                     <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}">
-                        <button type="submit" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</button>
+                        <button type="submit" onclick="return confirm('Are you sure you want to delete entry for {{ entry.laptop_server }}?');">Delete</button> <!-- MODIFIED confirm msg -->
                     </form>
                 </td>
             </tr>
@@ -55,12 +69,15 @@
         </tbody>
     </table>
     {% else %}
-    <p>Your vault is empty. Add an entry using the form above.</p>
+        {% if search_term %}
+            <p>No entries found matching your search criteria.</p>
+        {% else %}
+            <p>Your vault is empty. Add an entry using the form above.</p>
+        {% endif %}
     {% endif %}
 
 {% endblock %}
 
 {% block scripts %}
-    {# Link to your JavaScript file for interactivity #}
     <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
 {% endblock %}

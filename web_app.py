@@ -2,42 +2,33 @@
 import os
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify)
-from functools import wraps # For login_required decorator
-import config # Your config file
-import db     # Your db interaction file
-import encryption # Your encryption file
-import utils    # Your utils file (for password generation)
+from functools import wraps
+import config
+import db
+import encryption
+import utils
 
 app = Flask(__name__)
-app.secret_key = config.SECRET_KEY # Load secret key for sessions
+app.secret_key = config.SECRET_KEY
 
-# --- Database Connection ---
-# Optional: Initialize connection pool or ensure connection on first request
-# For simplicity, we rely on db.get_db() creating it when needed.
-# Consider adding app context handling for DB connection/closing if needed.
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    db.close_db() # Close DB connection when app context tears down
+    db.close_db()
 
-# --- Decorator for Login Required ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('login'))
-        # --- CRITICAL: Load key and salt from session for use in the request ---
         if 'encryption_key' not in session or 'user_salt' not in session:
              flash('Session error: Encryption key missing. Please log in again.', 'error')
-             session.clear() # Clear potentially corrupt session
+             session.clear()
              return redirect(url_for('login'))
-        # You might pass these via g (Flask's request context global)
-        # or just access session directly in the routes that need them.
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Routes ---
-
+# --- index, login, signup, logout remain the same ---
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -46,8 +37,9 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # ... (existing login logic) ...
     if 'user_id' in session:
-        return redirect(url_for('vault')) # Already logged in
+        return redirect(url_for('vault'))
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -60,20 +52,16 @@ def login():
         user_data = db.find_user(username)
 
         if user_data and encryption.verify_master_password(user_data['password_hash'], password):
-            # --- Store essential info in session ---
             session['user_id'] = str(user_data['_id'])
             session['username'] = user_data['username']
-            session['user_salt'] = user_data['salt'] # Store salt
-
-            # --- CRITICAL: Derive and store encryption key in session ---
+            session['user_salt'] = user_data['salt']
             try:
                 key = encryption.derive_key(password, user_data['salt'])
-                session['encryption_key'] = key # Store the derived key
+                session['encryption_key'] = key
             except Exception as e:
                  flash(f'Failed to derive encryption key: {e}. Cannot proceed.', 'error')
-                 session.clear() # Don't leave partial session data
+                 session.clear()
                  return render_template('login.html')
-
             flash('Login successful!', 'success')
             return redirect(url_for('vault'))
         else:
@@ -81,10 +69,12 @@ def login():
 
     return render_template('login.html')
 
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    # ... (existing signup logic) ...
     if 'user_id' in session:
-        return redirect(url_for('vault')) # Already logged in
+        return redirect(url_for('vault'))
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -100,21 +90,15 @@ def signup():
         elif db.find_user(username):
             flash('Username already exists.', 'error')
         else:
-            # Generate salt and hash password
             try:
                 salt = encryption.generate_salt()
                 hashed_password = encryption.hash_master_password(password, salt)
-
-                # Add user to DB
                 user_id = db.add_user(username, hashed_password, salt)
 
                 if user_id:
                     flash('Account created successfully! Please log in.', 'success')
-                    # Ensure indexes exist if this is the first user etc.
-                    try:
-                        db.ensure_indexes()
-                    except Exception as idx_e:
-                        print(f"Warning: Could not ensure indexes after signup: {idx_e}") # Log this
+                    try: db.ensure_indexes()
+                    except Exception as idx_e: print(f"Warning: Could not ensure indexes after signup: {idx_e}")
                     return redirect(url_for('login'))
                 else:
                     flash('Failed to create account. Please try again.', 'error')
@@ -123,36 +107,41 @@ def signup():
 
     return render_template('signup.html')
 
+
 @app.route('/logout')
 def logout():
-    # --- CRITICAL: Clear all sensitive session data ---
-    session.pop('user_id', None)
-    session.pop('username', None)
-    session.pop('user_salt', None)
-    session.pop('encryption_key', None)
-    # Or just session.clear()
+    session.clear()
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
+
+# MODIFIED: Handle search term
 @app.route('/vault')
 @login_required
 def vault():
     user_id = session['user_id']
-    entries = db.get_vault_entries(user_id)
-    # We pass the raw entries, decryption happens on demand via API call
-    return render_template('vault.html', entries=entries)
+    # Get search term from query parameters (GET request)
+    search_term = request.args.get('search_term', '') # Default to empty string if not found
 
+    # Fetch entries, passing the search term to the db function
+    entries = db.get_vault_entries(user_id, search_term=search_term)
+
+    # Pass entries and the search term back to the template
+    return render_template('vault.html', entries=entries, search_term=search_term)
+
+# MODIFIED: Read 'laptop_server' from form
 @app.route('/add_entry', methods=['POST'])
 @login_required
 def add_entry():
-    website = request.form.get('website')
+    laptop_server = request.form.get('laptop_server') # CHANGED from 'website'
     entry_username = request.form.get('entry_username')
-    password = request.form.get('entry_password') # Plain text from form
+    password = request.form.get('entry_password')
     user_id = session['user_id']
-    encryption_key = session['encryption_key'] # Get key from session
+    encryption_key = session.get('encryption_key') # Use .get for safety
 
-    if not website or not entry_username or not password:
-        flash('Website, Username, and Password are required.', 'error')
+    # VALIDATION: Check if laptop_server exists
+    if not laptop_server or not entry_username or not password:
+        flash('Laptop/Server, Username, and Password are required.', 'error') # MODIFIED msg
     elif not encryption_key:
          flash('Encryption key not found in session. Please log in again.', 'error')
          session.clear()
@@ -160,7 +149,8 @@ def add_entry():
     else:
         try:
             encrypted_password = encryption.encrypt_data(password, encryption_key)
-            entry_id = db.add_vault_entry(user_id, website, entry_username, encrypted_password)
+            # Pass laptop_server to db function
+            entry_id = db.add_vault_entry(user_id, laptop_server, entry_username, encrypted_password) # CHANGED
             if entry_id:
                 flash('Entry added successfully!', 'success')
             else:
@@ -168,21 +158,20 @@ def add_entry():
         except Exception as e:
             flash(f'Error adding entry: {e}', 'error')
 
+    # Redirect back to vault, preserving search term is complex here,
+    # usually search is done via GET, add via POST redirects cleanly.
     return redirect(url_for('vault'))
 
+# --- delete_entry, generate_password_api, get_password_api remain the same ---
+# (Assuming get_password_api uses the efficient find_entry_by_id_and_user)
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
     user_id = session['user_id']
-    # Optional: Verify the entry actually belongs to the user before deleting
-    entry = db.get_vault_entries(user_id) # Fetch all to check ownership (inefficient but simple)
-    is_owner = any(str(e['_id']) == entry_id for e in entry) # Check if ID exists in user's entries
+    # Use the efficient check now if using find_entry_by_id_and_user from db.py
+    entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
 
-    # A better way: Modify get_vault_entries or add find_entry(entry_id, user_id)
-    # entry_data = db.find_one_entry(entry_id)
-    # if entry_data and str(entry_data['user_id']) == user_id: is_owner = True
-
-    if is_owner: # Replace with better ownership check if implemented
+    if entry_data: # If entry exists and belongs to user
         try:
             success = db.delete_vault_entry(entry_id)
             if success:
@@ -194,16 +183,15 @@ def delete_entry(entry_id):
     else:
          flash('You do not have permission to delete this entry or it does not exist.', 'error')
 
-
+    # Redirect back to vault. Again, search term isn't easily preserved after POST->Redirect
     return redirect(url_for('vault'))
 
-# --- API-like endpoints for JavaScript ---
 
 @app.route('/generate_password')
-@login_required # User must be logged in to use generator (optional decision)
+@login_required
 def generate_password_api():
     try:
-        password = utils.generate_password(16) # Or get length from query param: request.args.get('length', 16)
+        password = utils.generate_password(16)
         return jsonify({'password': password})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -215,14 +203,11 @@ def get_password_api(entry_id):
     encryption_key = session.get('encryption_key')
 
     if not encryption_key:
-        return jsonify({'error': 'Encryption key missing from session'}), 401 # Unauthorized
+        return jsonify({'error': 'Encryption key missing from session'}), 401
 
     try:
-        # SECURITY: Fetch *specifically* this entry and verify ownership!
-        # Add a function like db.find_entry_by_id_and_user(entry_id, user_id)
-        # For now, using the less efficient method from delete:
-        entries = db.get_vault_entries(user_id)
-        entry_data = next((e for e in entries if str(e['_id']) == entry_id), None)
+        # Use the efficient check
+        entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
 
         if entry_data:
              encrypted_pass = entry_data.get('encrypted_password')
@@ -235,27 +220,27 @@ def get_password_api(entry_id):
              else:
                  return jsonify({'password': ''}) # No password stored
         else:
-            return jsonify({'error': 'Entry not found or access denied'}), 404 # Not Found or Forbidden
+            return jsonify({'error': 'Entry not found or access denied'}), 404
 
     except Exception as e:
-        print(f"Error in get_password_api: {e}") # Log the error server-side
+        print(f"Error in get_password_api: {e}")
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
-# --- Run the App (for development) ---
+# --- Run the App ---
 if __name__ == '__main__':
-    # Make sure DB is connectable before starting
     try:
-        db.connect_db()
-        db.ensure_indexes() # Ensure indexes on startup
-        db.close_db() # Close initial connection, will reconnect per request
-        print("Database connection checked and indexes ensured.")
+        db_conn_check = db.connect_db() # Test connection
+        if db_conn_check:
+            db.ensure_indexes() # Ensure indexes on startup
+            db.close_db() # Close initial connection
+            print("Database connection checked and indexes ensured.")
+        else:
+             # Should have been raised by connect_db, but as fallback:
+             raise ConnectionError("Failed to get DB connection during startup check.")
     except Exception as e:
-        print(f"\n{'*'*20}\nCRITICAL: Could not connect to database on startup: {e}\n{'*'*20}\n")
-        # Optionally exit if DB is essential for startup
-        # import sys
-        # sys.exit(1)
+        print(f"\n{'*'*20}\nCRITICAL: Could not connect/setup database on startup: {e}\n{'*'*20}\n")
+        import sys
+        sys.exit(1) # Exit if DB connection fails on startup
 
-    # Host '0.0.0.0' makes it accessible on your network (use with caution)
-    # Debug=True enables auto-reloading and more detailed errors (NEVER use in production)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True) # Use debug=False for production proxy setup
