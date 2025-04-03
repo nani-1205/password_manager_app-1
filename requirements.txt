@@ -1,0 +1,6 @@
+Flask>=2.0 # Or latest stable version
+pymongo>=4.0
+cryptography>=40.0
+bcrypt>=4.0
+python-dotenv>=1.0
+# Add other dependencies if needed, e.g., Flask-WTF for forms/CSRF later

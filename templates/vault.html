@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Your Vault{% endblock %}
+
+{% block content %}
+    <h1>Your Password Vault</h1>
+
+    <h2>Add New Entry</h2>
+    <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
+        <div class="form-group">
+            <label for="website">Website/App:</label>
+            <input type="text" id="website" name="website" required>
+        </div>
+        <div class="form-group">
+            <label for="entry_username">Username:</label>
+            <input type="text" id="entry_username" name="entry_username" required>
+        </div>
+        <div class="form-group">
+            <label for="entry_password">Password:</label>
+            <input type="password" id="entry_password" name="entry_password" required>
+             <button type="button" class="inline-button" id="generate-btn">Generate</button>
+             <button type="button" class="inline-button" id="show-hide-btn" data-target="entry_password">Show</button>
+        </div>
+        <button type="submit">Add Entry</button>
+    </form>
+
+    <hr style="margin: 30px 0;">
+
+    <h2>Stored Entries</h2>
+    {% if entries %}
+    <table>
+        <thead>
+            <tr>
+                <th>Website/App</th>
+                <th>Username</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td>{{ entry.website }}</td>
+                <td>{{ entry.entry_username }}</td>
+                <td class="actions">
+                    <button type="button" class="inline-button show-stored-btn" data-id="{{ entry._id | string }}">Show Password</button>
+                    <button type="button" class="inline-button copy-btn" data-id="{{ entry._id | string }}">Copy Password</button>
+                    <!-- Update requires more complex UI (modal or separate page), skipping for simplicity -->
+                    <!-- Delete Form -->
+                    <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}">
+                        <button type="submit" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Your vault is empty. Add an entry using the form above.</p>
+    {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+    {# Link to your JavaScript file for interactivity #}
+    <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
+{% endblock %}
