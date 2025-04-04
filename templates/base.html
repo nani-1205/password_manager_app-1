@@ -4,71 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Password Vault{% endblock %}</title>
-    <!-- Basic Styling -->
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Optional: Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; color: #333; }
-        .container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        nav { background-color: #e9ecef; padding: 10px 20px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
-        nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
-        nav a:hover { text-decoration: underline; }
-        nav span { margin-right: 15px; color: #555; }
-        h1, h2 { color: #343a40; margin-bottom: 15px; }
-        hr { border: 0; height: 1px; background-color: #dee2e6; margin: 30px 0; }
-        .flash-messages { padding: 0; margin-bottom: 15px; }
-        .flash-messages li { list-style: none; padding: 12px 15px; margin-bottom: 10px; border-radius: 4px; border: 1px solid transparent; }
-        .flash-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .flash-error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-        .flash-warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input[type="text"], .form-group input[type="password"], .form-group input[type="search"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; font-size: 1rem; }
-        .form-group input:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
-        button, .inline-button { padding: 10px 15px; font-size: 1rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent; background-color: #007bff; color: white; }
-        button:hover, .inline-button:hover { background-color: #0056b3; }
-        button[type="submit"] { margin-top: 10px; }
-        .inline-button { padding: 5px 10px; font-size: 0.9rem; margin-left: 5px; }
-        .actions form { display: inline-block; margin: 0 2px; }
-        .actions button { background-color: #dc3545; font-size: 0.9rem; padding: 5px 10px;}
-        .actions button:hover { background-color: #c82333; }
-        .actions .inline-button { background-color: #6c757d; }
-        .actions .inline-button:hover { background-color: #5a6268; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; background-color: #fff; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; vertical-align: middle; }
-        th { background-color: #e9ecef; font-weight: bold; }
-        td { word-break: break-all; } /* Prevent long strings from breaking layout */
-        a { color: #007bff; }
-        a:hover { color: #0056b3; }
-        .search-clear a { font-size: 0.9rem; }
+        /* Custom styles */
+        body {
+            padding-top: 56px; /* Adjust based on navbar height */
+            padding-bottom: 60px; /* Space for potential footer content + logo */
+            background-color: #f8f9fa; /* Light background */
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .container {
+            margin-top: 2rem; /* Add some space below the navbar */
+        }
+        .card {
+             margin-top: 1rem;
+             margin-bottom: 1rem;
+        }
+        /* Styling for the fixed logo */
+        .fixed-logo {
+            position: fixed;
+            bottom: 15px; /* Adjust vertical position */
+            right: 20px; /* Adjust horizontal position */
+            z-index: 1030; /* Ensure it's above most content */
+            opacity: 0.7; /* Slightly transparent */
+            transition: opacity 0.2s ease-in-out;
+        }
+        .fixed-logo img {
+            max-height: 40px; /* Control logo size */
+            width: auto;
+        }
+        .fixed-logo:hover {
+            opacity: 1.0; /* Full opacity on hover */
+        }
+        /* Make action buttons smaller */
+        .table .btn-sm {
+             padding: 0.2rem 0.4rem;
+             font-size: 0.8rem;
+        }
+        .table .btn-group {
+             white-space: nowrap; /* Prevent buttons wrapping */
+        }
     </style>
 </head>
 <body>
-    <nav>
-        <div>
-             <a href="{{ url_for('index') }}">Home</a>
-             {% if session.get('user_id') %}
-                 <a href="{{ url_for('vault') }}">Vault</a>
-             {% endif %}
-        </div>
-        <div>
-            {% if session.get('user_id') %}
-                <span>Welcome, {{ session.get('username', 'User') }}!</span>
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login') }}">Login</a>
-                <a href="{{ url_for('signup') }}">Sign Up</a>
-            {% endif %}
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-shield-lock"></i> <!-- Example icon -->
+                Password Vault
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if session.get('user_id') %}
+                        <li class="nav-item">
+                            <span class="navbar-text me-3">
+                                Welcome, {{ session.get('username', 'User') }}!
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="{{ url_for('vault') }}">Vault</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('signup') }}">Sign Up</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </nav>
 
+    <!-- Main Content Area -->
     <div class="container">
-        {# Display flashed messages #}
+        {# Display flashed messages using Bootstrap alerts #}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <ul class="flash-messages">
                 {% for category, message in messages %}
-                    <li class="flash-{{ category }}">{{ message }}</li>
+                    {# Map flash categories to Bootstrap alert types #}
+                    {% set alert_type = 'info' %} {# Default #}
+                    {% if category == 'error' %}
+                        {% set alert_type = 'danger' %}
+                    {% elif category == 'success' %}
+                        {% set alert_type = 'success' %}
+                    {% elif category == 'warning' %}
+                        {% set alert_type = 'warning' %}
+                    {% endif %}
+                    <div class="alert alert-{{ alert_type }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
-                </ul>
             {% endif %}
         {% endwith %}
 
@@ -77,7 +117,16 @@
         </main>
     </div>
 
-    {# JavaScript Block #}
+    <!-- Fixed Logo Area -->
+    <div class="fixed-logo">
+        {# Ensure the path matches where you put the logo #}
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
+    </div>
+
+    <!-- Bootstrap Bundle JS (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    {# Block for page-specific JavaScript #}
     {% block scripts %}{% endblock %}
 </body>
 </html>
