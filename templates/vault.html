@@ -5,13 +5,29 @@
 {% block content %}
     <h1>Your Password Vault</h1>
 
+    {# Display 2FA Status and Management Links #}
+    <div style="margin-bottom: 20px; padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+        <strong>Two-Factor Authentication:</strong>
+        {% if session.get('is_2fa_enabled') %} {# Check session first for status #}
+            <span style="color: green; font-weight: bold;">Enabled</span>
+            <form method="POST" action="{{ url_for('disable_2fa') }}" style="display: inline; margin-left: 15px;">
+                 <button type="submit" class="inline-button" style="background-color: #ffc107; color: #333;" onclick="return confirm('Are you sure you want to disable 2FA?');">Disable 2FA</button>
+                 {# Add password prompt here for better security later #}
+            </form>
+        {% else %}
+             <span style="color: red;">Disabled</span>
+             <a href="{{ url_for('setup_2fa') }}" class="inline-button" style="margin-left: 15px;">Enable 2FA</a>
+        {% endif %}
+    </div>
+
     <!-- Search Form -->
     <div style="margin-bottom: 20px;">
+       {# ... (Search form as before) ... #}
         <form method="GET" action="{{ url_for('vault') }}" class="form-group">
             <label for="search_term">Search Entries</label>
             <div style="display: flex; align-items: center;">
                 <input type="search" id="search_term" name="search_term" placeholder="Search Laptop/Server ID..." value="{{ search_term or '' }}" style="flex-grow: 1; margin-right: 10px;">
-                <button type="submit" class="inline-button" style="height: 40px;">Search</button> <!-- Adjusted height -->
+                <button type="submit" class="inline-button" style="height: 40px;">Search</button>
                  {% if search_term %}
                     <span class="search-clear" style="margin-left: 10px;"><a href="{{ url_for('vault') }}">Clear Search</a></span>
                 {% endif %}
@@ -22,6 +38,7 @@
     <hr>
 
     <h2>Add New Entry</h2>
+    {# ... (Add entry form as before) ... #}
     <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
         <div class="form-group">
             <label for="laptop_server">Laptop/Server ID:</label>
@@ -42,16 +59,18 @@
         <button type="submit">Add Entry</button>
     </form>
 
+
     <hr style="margin: 30px 0;">
 
     <h2>Stored Entries {% if search_term %}<span style="font-weight: normal; font-size: 0.9em;">(Filtered by "{{ search_term }}")</span>{% endif %}</h2>
+    {# ... (Entries table as before) ... #}
     {% if entries %}
     <table>
         <thead>
             <tr>
                 <th>Laptop/Server ID</th>
                 <th>Username</th>
-                <th style="width: 220px;">Actions</th> <!-- Adjusted width -->
+                <th style="width: 220px;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -71,16 +90,13 @@
         </tbody>
     </table>
     {% else %}
-        {% if search_term %}
-            <p>No entries found matching your search criteria.</p>
-        {% else %}
-            <p>Your vault is empty. Add an entry using the form above.</p>
-        {% endif %}
+         {# ... (Empty vault message as before) ... #}
+         {% if search_term %} <p>No entries found matching your search criteria.</p>
+         {% else %} <p>Your vault is empty. Add an entry using the form above.</p> {% endif %}
     {% endif %}
 
 {% endblock %}
 
 {% block scripts %}
-    {# Link to your JavaScript file for interactivity #}
     <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
 {% endblock %}

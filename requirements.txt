@@ -3,3 +3,5 @@ pymongo>=4.0
 cryptography>=40.0
 bcrypt>=4.0
 python-dotenv>=1.0
+pyotp>=2.6 # <--- Add TOTP library
+qrcode[pil]>=7.0 # <--- Add QR Code library (needs Pillow)

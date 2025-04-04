@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Two-Factor Authentication{% endblock %}
+
+{% block content %}
+    <h1>Setup Two-Factor Authentication</h1>
+
+    <p>Scan the QR code below with your authenticator app (like Google Authenticator, Authy, etc.).</p>
+    <p>If you cannot scan the code, you can manually enter the setup key.</p>
+
+    {% if qr_code_data %}
+        <div style="margin: 20px 0;">
+            <img src="{{ qr_code_data }}" alt="Authenticator QR Code">
+        </div>
+    {% else %}
+        <p style="color: red;">Error generating QR code.</p>
+    {% endif %}
+
+    <div style="margin: 20px 0;">
+        <strong>Setup Key:</strong> <code style="background-color: #f0f0f0; padding: 3px 6px; border-radius: 3px;">{{ secret_key }}</code>
+        <br><small>(Keep this key safe as a backup!)</small>
+    </div>
+
+    <hr>
+
+    <p>After adding the key to your app, enter the 6-digit code it generates below to verify and enable 2FA.</p>
+
+    <form method="POST" action="{{ url_for('setup_2fa') }}">
+        {# Pass the generated secret back to the server for verification #}
+        <input type="hidden" name="secret_key" value="{{ secret_key }}">
+        <div class="form-group">
+            <label for="totp_code">Verification Code:</label>
+            <input type="text" id="totp_code" name="totp_code" required autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" minlength="6" maxlength="6">
+        </div>
+        <button type="submit">Verify and Enable 2FA</button>
+    </form>
+
+     <p style="margin-top: 15px;"><a href="{{ url_for('vault') }}">Cancel Setup</a></p>
+
+{% endblock %}

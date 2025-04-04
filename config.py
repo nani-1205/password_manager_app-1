@@ -2,36 +2,33 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# --- Flask Secret Key (REQUIRED for sessions) ---
+# --- Flask Secret Key ---
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise ValueError("No SECRET_KEY set in .env file or environment variables. Flask sessions require it.")
+    raise ValueError("No SECRET_KEY set")
 
-# --- Retrieve MongoDB Connection Details from Environment Variables ---
+# --- MongoDB Details ---
 mongo_host = os.getenv("MONGO_HOST", "localhost")
 mongo_port_str = os.getenv("MONGO_PORT", "27017")
 mongo_user = os.getenv("MONGO_USER")
 mongo_password = os.getenv("MONGO_PASSWORD")
 mongo_auth_db = os.getenv("MONGO_AUTH_DB", "admin")
-
-# --- Validate Port ---
 try:
     mongo_port = int(mongo_port_str)
 except ValueError:
-    raise ValueError(f"Invalid MONGO_PORT value '{mongo_port_str}' in .env file or environment variables. Must be an integer.")
+    raise ValueError(f"Invalid MONGO_PORT '{mongo_port_str}'")
 
-# --- Basic Check for Authentication ---
 if mongo_user and not mongo_password:
-    print("Warning: MONGO_USER is set, but MONGO_PASSWORD is not. Authentication might fail.")
+    print("Warning: MONGO_USER set, but MONGO_PASSWORD is not.")
 
-# --- Other Configurations ---
+# --- Other Config ---
 DB_NAME = os.getenv("DB_NAME", "password_vault")
 USERS_COLLECTION = os.getenv("USERS_COLLECTION", "users")
 VAULT_COLLECTION = os.getenv("VAULT_COLLECTION", "vault")
-
-# Key Derivation Parameters
 PBKDF2_ITERATIONS = 390000
 SALT_SIZE = 16
+
+# --- TOTP Config ---
+TOTP_ISSUER_NAME = os.getenv("TOTP_ISSUER_NAME", "MyPasswordVault") # Load issuer name
