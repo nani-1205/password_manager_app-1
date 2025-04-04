@@ -4,54 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Password Vault{% endblock %}</title>
-    <!-- Link to a CSS framework like Bootstrap or custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Basic Styling -->
     <style>
-        /* Basic inline styles if not using external CSS */
-        body { font-family: sans-serif; margin: 20px; }
-        nav { margin-bottom: 20px; background-color: #f0f0f0; padding: 10px; }
-        nav a { margin-right: 15px; text-decoration: none; color: #333; }
-        .flash-messages li { list-style: none; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
-        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        nav { background-color: #e9ecef; padding: 10px 20px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+        nav a:hover { text-decoration: underline; }
+        nav span { margin-right: 15px; color: #555; }
+        h1, h2 { color: #343a40; margin-bottom: 15px; }
+        hr { border: 0; height: 1px; background-color: #dee2e6; margin: 30px 0; }
+        .flash-messages { padding: 0; margin-bottom: 15px; }
+        .flash-messages li { list-style: none; padding: 12px 15px; margin-bottom: 10px; border-radius: 4px; border: 1px solid transparent; }
+        .flash-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash-error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash-warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; }
-        .form-group input { width: 300px; padding: 8px; box-sizing: border-box; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .actions form { display: inline-block; margin-right: 5px; }
-        .actions button, .inline-button { padding: 5px 10px; cursor: pointer; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input[type="text"], .form-group input[type="password"], .form-group input[type="search"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; font-size: 1rem; }
+        .form-group input:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+        button, .inline-button { padding: 10px 15px; font-size: 1rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent; background-color: #007bff; color: white; }
+        button:hover, .inline-button:hover { background-color: #0056b3; }
+        button[type="submit"] { margin-top: 10px; }
+        .inline-button { padding: 5px 10px; font-size: 0.9rem; margin-left: 5px; }
+        .actions form { display: inline-block; margin: 0 2px; }
+        .actions button { background-color: #dc3545; font-size: 0.9rem; padding: 5px 10px;}
+        .actions button:hover { background-color: #c82333; }
+        .actions .inline-button { background-color: #6c757d; }
+        .actions .inline-button:hover { background-color: #5a6268; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; background-color: #fff; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; vertical-align: middle; }
+        th { background-color: #e9ecef; font-weight: bold; }
+        td { word-break: break-all; } /* Prevent long strings from breaking layout */
+        a { color: #007bff; }
+        a:hover { color: #0056b3; }
+        .search-clear a { font-size: 0.9rem; }
     </style>
 </head>
 <body>
     <nav>
-        <a href="{{ url_for('vault') }}">Vault</a>
-        {% if session.get('user_id') %}
-            <span>Welcome, {{ session.get('username', 'User') }}!</span>
-            <a href="{{ url_for('logout') }}">Logout</a>
-        {% else %}
-            <a href="{{ url_for('login') }}">Login</a>
-            <a href="{{ url_for('signup') }}">Sign Up</a>
-        {% endif %}
+        <div>
+             <a href="{{ url_for('index') }}">Home</a>
+             {% if session.get('user_id') %}
+                 <a href="{{ url_for('vault') }}">Vault</a>
+             {% endif %}
+        </div>
+        <div>
+            {% if session.get('user_id') %}
+                <span>Welcome, {{ session.get('username', 'User') }}!</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('signup') }}">Sign Up</a>
+            {% endif %}
+        </div>
     </nav>
 
-    {# Display flashed messages #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flash-messages">
-            {% for category, message in messages %}
-                <li class="flash-{{ category }}">{{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+    <div class="container">
+        {# Display flashed messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="flash-{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
+    {# JavaScript Block #}
     {% block scripts %}{% endblock %}
 </body>
 </html>

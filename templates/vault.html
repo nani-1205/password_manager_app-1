@@ -7,12 +7,15 @@
 
     <!-- Search Form -->
     <div style="margin-bottom: 20px;">
-        <form method="GET" action="{{ url_for('vault') }}">
-            <input type="search" name="search_term" placeholder="Search Laptop/Server..." value="{{ search_term or '' }}" style="padding: 8px; min-width: 300px;">
-            <button type="submit" class="inline-button">Search</button>
-            {% if search_term %}
-                <a href="{{ url_for('vault') }}" style="margin-left: 10px;">Clear Search</a>
-            {% endif %}
+        <form method="GET" action="{{ url_for('vault') }}" class="form-group">
+            <label for="search_term">Search Entries</label>
+            <div style="display: flex; align-items: center;">
+                <input type="search" id="search_term" name="search_term" placeholder="Search Laptop/Server ID..." value="{{ search_term or '' }}" style="flex-grow: 1; margin-right: 10px;">
+                <button type="submit" class="inline-button" style="height: 40px;">Search</button> <!-- Adjusted height -->
+                 {% if search_term %}
+                    <span class="search-clear" style="margin-left: 10px;"><a href="{{ url_for('vault') }}">Clear Search</a></span>
+                {% endif %}
+            </div>
         </form>
     </div>
 
@@ -21,8 +24,7 @@
     <h2>Add New Entry</h2>
     <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
         <div class="form-group">
-            <!-- MODIFIED label and input name/id -->
-            <label for="laptop_server">Laptop/Server:</label>
+            <label for="laptop_server">Laptop/Server ID:</label>
             <input type="text" id="laptop_server" name="laptop_server" required>
         </div>
         <div class="form-group">
@@ -31,37 +33,37 @@
         </div>
         <div class="form-group">
             <label for="entry_password">Password:</label>
-            <input type="password" id="entry_password" name="entry_password" required>
-             <button type="button" class="inline-button" id="generate-btn">Generate</button>
-             <button type="button" class="inline-button" id="show-hide-btn" data-target="entry_password">Show</button>
+            <div style="display: flex; align-items: center;">
+                 <input type="password" id="entry_password" name="entry_password" required style="flex-grow: 1; margin-right: 10px;">
+                 <button type="button" class="inline-button" id="generate-btn" title="Generate Password">Generate</button>
+                 <button type="button" class="inline-button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password">Show</button>
+             </div>
         </div>
         <button type="submit">Add Entry</button>
     </form>
 
     <hr style="margin: 30px 0;">
 
-    <h2>Stored Entries {% if search_term %}(Filtered by "{{ search_term }}"){% endif %}</h2>
+    <h2>Stored Entries {% if search_term %}<span style="font-weight: normal; font-size: 0.9em;">(Filtered by "{{ search_term }}")</span>{% endif %}</h2>
     {% if entries %}
     <table>
         <thead>
             <tr>
-                <!-- MODIFIED table header -->
-                <th>Laptop/Server</th>
+                <th>Laptop/Server ID</th>
                 <th>Username</th>
-                <th>Actions</th>
+                <th style="width: 220px;">Actions</th> <!-- Adjusted width -->
             </tr>
         </thead>
         <tbody>
             {% for entry in entries %}
             <tr>
-                <!-- MODIFIED field access -->
                 <td>{{ entry.laptop_server }}</td>
                 <td>{{ entry.entry_username }}</td>
                 <td class="actions">
-                    <button type="button" class="inline-button show-stored-btn" data-id="{{ entry._id | string }}">Show Password</button>
-                    <button type="button" class="inline-button copy-btn" data-id="{{ entry._id | string }}">Copy Password</button>
+                    <button type="button" class="inline-button show-stored-btn" data-id="{{ entry._id | string }}" title="Show Password">Show</button>
+                    <button type="button" class="inline-button copy-btn" data-id="{{ entry._id | string }}" title="Copy Password">Copy</button>
                     <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}">
-                        <button type="submit" onclick="return confirm('Are you sure you want to delete entry for {{ entry.laptop_server }}?');">Delete</button> <!-- MODIFIED confirm msg -->
+                        <button type="submit" onclick="return confirm('Are you sure you want to delete the entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry">Delete</button>
                     </form>
                 </td>
             </tr>
@@ -79,5 +81,6 @@
 {% endblock %}
 
 {% block scripts %}
+    {# Link to your JavaScript file for interactivity #}
     <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
 {% endblock %}

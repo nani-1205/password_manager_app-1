@@ -1,4 +1,4 @@
-# db.py #v-2
+# db.py
 from pymongo import MongoClient, errors
 import config
 from bson import ObjectId
@@ -7,7 +7,7 @@ import re # Import regular expression module
 _client = None
 _db = None
 
-# --- connect_db, get_db, close_db remain the same ---
+# --- connect_db, get_db, close_db ---
 def connect_db():
     """Establishes connection to the MongoDB database using host/port/auth details."""
     global _client, _db
@@ -16,15 +16,15 @@ def connect_db():
             connection_args = {
                 'host': config.mongo_host,
                 'port': config.mongo_port,
-                'serverSelectionTimeoutMS': 5000,
-                'connectTimeoutMS': 10000
+                'serverSelectionTimeoutMS': 5000, # Wait 5 seconds for server selection
+                'connectTimeoutMS': 10000 # Wait 10 seconds for initial connection
             }
             if config.mongo_user:
                 connection_args['username'] = config.mongo_user
                 connection_args['password'] = config.mongo_password
                 connection_args['authSource'] = config.mongo_auth_db
             _client = MongoClient(**connection_args)
-            _client.admin.command('ping')
+            _client.admin.command('ping') # Verify connection
             print(f"Successfully connected to MongoDB at {config.mongo_host}:{config.mongo_port}!")
             _db = _client[config.DB_NAME]
         except errors.OperationFailure as e:
@@ -56,20 +56,24 @@ def close_db(e=None):
         _db = None
 
 def ensure_indexes():
+    """Creates necessary indexes if they don't exist."""
     db_conn = None
     try:
         db_conn = get_db()
         if db_conn:
+            # Unique index on username
             db_conn[config.USERS_COLLECTION].create_index("username", unique=True)
+            # Index on user_id for vault entries
             db_conn[config.VAULT_COLLECTION].create_index("user_id")
-            # Optional: Add index on laptop_server for faster searching
+            # Optional: Compound index including laptop_server for faster searching by user
             db_conn[config.VAULT_COLLECTION].create_index([("user_id", 1), ("laptop_server", 1)])
             print("Database indexes ensured.")
     except Exception as e:
-        print(f"Error creating or ensuring indexes: {e}")
+        print(f"Warning: Error creating or ensuring indexes: {e}")
 
-# --- find_user, add_user remain the same ---
+# --- User Operations ---
 def find_user(username):
+    """Finds a user by username."""
     try:
         db_conn = get_db()
         return db_conn[config.USERS_COLLECTION].find_one({"username": username})
@@ -78,6 +82,7 @@ def find_user(username):
         return None
 
 def add_user(username, hashed_password, salt):
+    """Adds a new user to the database."""
     try:
         db_conn = get_db()
         user_data = {
@@ -95,58 +100,44 @@ def add_user(username, hashed_password, salt):
         return None
 
 # --- Vault Operations ---
-
-# MODIFIED: Parameter name and field name changed
 def add_vault_entry(user_id, laptop_server, entry_username, encrypted_password):
     """Adds a new encrypted password entry for a user."""
     try:
         db_conn = get_db()
-        if isinstance(user_id, str):
-             entry_user_id = ObjectId(user_id)
-        else:
-             entry_user_id = user_id
+        if isinstance(user_id, str): entry_user_id = ObjectId(user_id)
+        else: entry_user_id = user_id
 
         entry_data = {
             "user_id": entry_user_id,
-            "laptop_server": laptop_server, # CHANGED from "website"
+            "laptop_server": laptop_server, # Field name change
             "entry_username": entry_username,
             "encrypted_password": encrypted_password
         }
         result = db_conn[config.VAULT_COLLECTION].insert_one(entry_data)
         return result.inserted_id
     except Exception as e:
-        print(f"Error adding vault entry for user '{user_id}', laptop/server '{laptop_server}': {e}") # MODIFIED error msg
+        print(f"Error adding vault entry for user '{user_id}', laptop/server '{laptop_server}': {e}")
         return None
 
-# MODIFIED: Added search_term parameter and filtering logic
 def get_vault_entries(user_id, search_term=None):
     """Retrieves vault entries for a specific user, optionally filtered by search term."""
     try:
         db_conn = get_db()
-        if isinstance(user_id, str):
-            query_user_id = ObjectId(user_id)
-        else:
-             query_user_id = user_id
+        if isinstance(user_id, str): query_user_id = ObjectId(user_id)
+        else: query_user_id = user_id
 
-        # Base query for the user
         query = {"user_id": query_user_id}
 
-        # If search term is provided, add filtering for laptop_server field
         if search_term:
-            # Use regex for case-insensitive partial matching
-            # Escape special regex characters in the search term for safety
             safe_search_term = re.escape(search_term)
-            query["laptop_server"] = {"$regex": safe_search_term, "$options": "i"}
+            query["laptop_server"] = {"$regex": safe_search_term, "$options": "i"} # Search logic
 
-        # Execute the query
-        entries = list(db_conn[config.VAULT_COLLECTION].find(query))
+        entries = list(db_conn[config.VAULT_COLLECTION].find(query).sort("laptop_server", 1)) # Optional: Sort results
         return entries
     except Exception as e:
-        print(f"Error retrieving vault entries for user '{user_id}' (search: '{search_term}'): {e}") # MODIFIED error msg
-        return [] # Return empty list on error
+        print(f"Error retrieving vault entries for user '{user_id}' (search: '{search_term}'): {e}")
+        return []
 
-# --- find_entry_by_id_and_user, update_vault_entry, delete_vault_entry remain the same ---
-# (Assuming update_vault_entry would also need parameter renaming if implemented)
 def find_entry_by_id_and_user(entry_id_str, user_id_str):
     """Finds a single vault entry by its ID and verifies ownership."""
     try:
@@ -164,21 +155,16 @@ def find_entry_by_id_and_user(entry_id_str, user_id_str):
 
 def update_vault_entry(entry_id, laptop_server, entry_username, encrypted_password):
     """Updates an existing vault entry. Assumes ownership already checked."""
-    # NOTE: Renamed 'website' parameter to 'laptop_server' here as well
     try:
         db_conn = get_db()
-        if isinstance(entry_id, str):
-            update_entry_id = ObjectId(entry_id)
-        else:
-            update_entry_id = entry_id
+        if isinstance(entry_id, str): update_entry_id = ObjectId(entry_id)
+        else: update_entry_id = entry_id
 
-        update_data = {
-            "$set": {
-                "laptop_server": laptop_server, # CHANGED from "website"
-                "entry_username": entry_username,
-                "encrypted_password": encrypted_password
-            }
-        }
+        update_data = {"$set": {
+            "laptop_server": laptop_server, # Field name change
+            "entry_username": entry_username,
+            "encrypted_password": encrypted_password
+        }}
         result = db_conn[config.VAULT_COLLECTION].update_one({"_id": update_entry_id}, update_data)
         return result.modified_count > 0
     except Exception as e:
@@ -189,10 +175,8 @@ def delete_vault_entry(entry_id):
     """Deletes a vault entry by its ID. Assumes ownership already checked."""
     try:
         db_conn = get_db()
-        if isinstance(entry_id, str):
-            delete_entry_id = ObjectId(entry_id)
-        else:
-             delete_entry_id = entry_id
+        if isinstance(entry_id, str): delete_entry_id = ObjectId(entry_id)
+        else: delete_entry_id = entry_id
         result = db_conn[config.VAULT_COLLECTION].delete_one({"_id": delete_entry_id})
         return result.deleted_count > 0
     except Exception as e:

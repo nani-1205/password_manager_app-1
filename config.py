@@ -6,18 +6,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Flask Secret Key (REQUIRED for sessions) ---
-# Generate a strong random key (e.g., using os.urandom(24)) and put it in .env
-# NEVER hardcode this, especially if committing code.
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("No SECRET_KEY set in .env file or environment variables. Flask sessions require it.")
 
 # --- Retrieve MongoDB Connection Details from Environment Variables ---
-mongo_host = os.getenv("MONGO_HOST", "localhost") # Default to localhost if not set
-mongo_port_str = os.getenv("MONGO_PORT", "27017") # Default to 27017 if not set
-mongo_user = os.getenv("MONGO_USER") # Will be None if not set (for no auth)
-mongo_password = os.getenv("MONGO_PASSWORD") # Will be None if not set
-mongo_auth_db = os.getenv("MONGO_AUTH_DB", "admin") # Default auth source
+mongo_host = os.getenv("MONGO_HOST", "localhost")
+mongo_port_str = os.getenv("MONGO_PORT", "27017")
+mongo_user = os.getenv("MONGO_USER")
+mongo_password = os.getenv("MONGO_PASSWORD")
+mongo_auth_db = os.getenv("MONGO_AUTH_DB", "admin")
 
 # --- Validate Port ---
 try:

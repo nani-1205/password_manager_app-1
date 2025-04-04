@@ -1,34 +1,28 @@
 # encryption.py
 import os
 import base64
-import bcrypt # Essential for hashing and salt generation
+import bcrypt
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import config # To get iteration count
+import config
 
 # --- Master Password Hashing (using bcrypt) ---
-
 def hash_master_password(password, salt):
     """Hashes the master password using bcrypt with a provided salt."""
-    # Ensure password and salt are bytes
     pwd_bytes = password.encode('utf-8')
-    # The salt provided from generate_salt() will already be bytes
     return bcrypt.hashpw(pwd_bytes, salt)
 
 def verify_master_password(stored_hash, provided_password):
     """Verifies a provided password against the stored bcrypt hash."""
-    # Ensure password is bytes and hash is bytes
     pwd_bytes = provided_password.encode('utf-8')
     if not isinstance(stored_hash, bytes):
-        # This might happen if retrieved incorrectly from DB or corrupted
         print("Error: Stored hash is not in bytes format.")
         return False
-
     try:
         return bcrypt.checkpw(pwd_bytes, stored_hash)
-    except ValueError: # Handle cases where stored_hash might not be a valid hash format
-        print("Warning: Encountered ValueError during password verification. Invalid hash format?")
+    except ValueError:
+        print("Warning: ValueError during password verification. Invalid hash format?")
         return False
     except Exception as e:
         print(f"Error during password verification: {e}")
@@ -36,73 +30,47 @@ def verify_master_password(stored_hash, provided_password):
 
 def generate_salt():
     """Generates a cryptographically secure salt for bcrypt."""
-    # bcrypt.gensalt() returns bytes, which is what hashpw expects
     return bcrypt.gensalt()
 
 # --- Vault Data Encryption (using Fernet) ---
-
 def derive_key(master_password, salt):
-    """
-    Derives a Fernet key from the master password and salt using PBKDF2.
-    IMPORTANT: Use the SAME salt used for hashing the master password.
-    """
-    # Ensure password and salt are bytes
+    """Derives a Fernet key from the master password and salt using PBKDF2."""
     password_bytes = master_password.encode('utf-8')
     if not isinstance(salt, bytes):
-        # Should not happen if salt comes from generate_salt/DB correctly
-        print("Error: Salt provided to derive_key is not in bytes format.")
-        # Handle this error appropriately, maybe raise exception
         raise TypeError("Salt must be bytes for key derivation")
-
 
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
-        length=32, # Fernet key size must be 32 url-safe base64-encoded bytes
+        length=32, # Fernet key size
         salt=salt,
-        iterations=config.PBKDF2_ITERATIONS, # Get iteration count from config
+        iterations=config.PBKDF2_ITERATIONS,
     )
-    # Derive the key bytes
     derived_key_bytes = kdf.derive(password_bytes)
-    # Encode the derived bytes into url-safe base64 for Fernet
     fernet_key = base64.urlsafe_b64encode(derived_key_bytes)
-    return fernet_key # This is the key Fernet uses
+    return fernet_key
 
 def encrypt_data(data, key):
     """Encrypts data using the derived Fernet key."""
-    if not data: # Handle empty strings or None
-        return b'' # Store empty bytes for empty input
-    if not isinstance(key, bytes):
-         raise TypeError("Encryption key must be bytes.")
-
+    if not data: return b''
+    if not isinstance(key, bytes): raise TypeError("Encryption key must be bytes.")
     try:
         f = Fernet(key)
-        # Ensure data is bytes before encrypting
-        if isinstance(data, str):
-            data_bytes = data.encode('utf-8')
-        else:
-            data_bytes = data # Assume it's already bytes if not string
-
+        if isinstance(data, str): data_bytes = data.encode('utf-8')
+        else: data_bytes = data
         return f.encrypt(data_bytes)
     except Exception as e:
         print(f"Error during encryption: {e}")
-        raise # Re-raise the exception
+        raise
 
 def decrypt_data(encrypted_data, key):
     """Decrypts data using the derived Fernet key."""
-    if not encrypted_data: # Handle empty bytes or None
-        return '' # Return empty string for empty input
-    if not isinstance(key, bytes):
-         raise TypeError("Decryption key must be bytes.")
-    if not isinstance(encrypted_data, bytes):
-         # This often happens if retrieving from DB and it wasn't stored as Binary
-         print("Error: Encrypted data is not in bytes format.")
-         raise TypeError("Encrypted data must be bytes for decryption")
-
+    if not encrypted_data: return ''
+    if not isinstance(key, bytes): raise TypeError("Decryption key must be bytes.")
+    if not isinstance(encrypted_data, bytes): raise TypeError("Encrypted data must be bytes for decryption")
     try:
         f = Fernet(key)
         decrypted_bytes = f.decrypt(encrypted_data)
         return decrypted_bytes.decode('utf-8')
-    except Exception as e: # Catches InvalidToken, etc.
+    except Exception as e:
         print(f"Decryption failed: {e}")
-        # It's crucial to know if decryption failed (wrong key, corrupted data)
-        return None # Return None to indicate failure
+        return None # Indicate failure
