@@ -1,21 +1,29 @@
 # web_app.py
-# (Final version with Quantum template rendering, brand_label handling, 2FA, etc.)
-# (Includes syntax fix in signup route and corrected DB startup check)
 import os
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify)
 from functools import wraps
-import config; import db; import encryption; import utils; import pyotp
+import config # Your config file (reads .env)
+import db     # Your db interaction file
+import encryption # Your encryption file
+import utils    # Your utils file (for password generation)
+import pyotp # For 2FA
 import traceback # For debugging errors
 
+# Initialize Flask App
 app = Flask(__name__)
+# Load Secret Key from config (which reads from .env)
 app.secret_key = config.SECRET_KEY
-if not app.secret_key: raise ValueError("FLASK_SECRET_KEY not set")
+if not app.secret_key:
+     # Ensure the app doesn't run without a secret key
+     raise ValueError("FLASK_SECRET_KEY is not set in config or environment variables!")
 
+# Close DB connection when app context tears down
 @app.teardown_appcontext
-def shutdown_session(exception=None): db.close_db()
+def shutdown_session(exception=None):
+    db.close_db()
 
-# --- Decorator ---
+# --- Decorator for Login Required Routes ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -30,6 +38,7 @@ def login_required(f):
 def index():
     if 'user_id' in session: return redirect(url_for('vault'))
     return redirect(url_for('login'))
+
 @app.route('/logout')
 def logout(): session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
 
@@ -95,10 +104,12 @@ def signup():
                 user_id = db.add_user(username, hashed_password, salt)
                 if user_id:
                     flash('Account created! Please log in.', 'success');
-                    try: db.ensure_indexes() # Try ensuring indexes after first user potentially
-                    except Exception as idx_e: print(f"Warning: Signup index error: {idx_e}")
+                    try:
+                        db.ensure_indexes()
+                    except Exception as idx_e:
+                        print(f"Warning: Could not ensure indexes after signup for user {username}: {idx_e}")
                     return redirect(url_for('login'))
-                else: flash('Failed to create account.', 'error') # Could be DB error or unexpected None
+                else: flash('Failed to create account.', 'error')
             except Exception as e: print(f"Signup Error: {e}"); traceback.print_exc(); flash(f'Signup error: {e}', 'error')
     return render_template('quantum_signup.html')
 
@@ -161,17 +172,37 @@ def add_entry():
         except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
+# --- CORRECTED INDENTATION IN THIS FUNCTION ---
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
-     user_id = session['user_id']; entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
-     if entry_data:
-         try: success = db.delete_vault_entry(entry_id);
-             if success: flash('Entry deleted.', 'success')
-             else: flash('Failed to delete.', 'error')
-         except Exception as e: flash(f'Error deleting: {e}', 'error')
-     else: flash('Cannot delete (not found/permission denied).', 'error')
-     return redirect(url_for('vault'))
+    """Handles deleting a specific vault entry after ownership check."""
+    user_id = session['user_id']
+    # IMPORTANT: Verify ownership before deleting
+    entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
+
+    if entry_data: # If the entry exists and belongs to the logged-in user
+        try:
+            # This block is indented once relative to 'if entry_data:'
+            success = db.delete_vault_entry(entry_id)
+            # This 'if/else' block is indented once relative to 'try:'
+            if success:
+                # This line is indented once relative to 'if success:'
+                flash('Entry deleted.', 'success')
+            else:
+                # This line is indented once relative to 'else:'
+                flash('Failed to delete entry from database.', 'error')
+        except Exception as e:
+            # This block is indented once relative to 'if entry_data:', matching 'try:'
+            # This line is indented once relative to 'except:'
+            flash(f'Error occurred during deletion: {e}', 'error')
+    else:
+         # This block is indented once relative to the function definition, matching 'if entry_data:'
+         # This line is indented once relative to 'else:'
+         flash('Cannot delete entry (not found or permission denied).', 'error')
+    # This return is aligned with the initial 'if entry_data:' block
+    return redirect(url_for('vault'))
+# --- END CORRECTION ---
 
 # --- APIs ---
 @app.route('/generate_password')
