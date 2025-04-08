@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quantum Vault{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v2.css') }}"> {# <-- Link new CSS #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v2.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
-    <!-- Remove glow effects for cleaner UI -->
-    <!-- <div class="glow-effect pulse" style="top: 20%; left: 30%;"></div> -->
-    <!-- <div class="glow-effect pulse" style="top: 70%; left: 70%;"></div> -->
-
     <div class="sidebar">
         <div class="sidebar-header">
             <div class="logo">QV</div>
@@ -23,7 +19,12 @@
                  <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
                 <span class="menu-text">Dashboard</span>
             </a>
-             {# --- 2FA Status/Link --- #}
+            {# --- NEW ADD ENTRY BUTTON --- #}
+            <a href="#" class="menu-item" id="add-entry-sidebar-btn">
+                 <div class="icon"><i class="bi bi-plus-circle-fill"></i></div>
+                <span class="menu-text">Add Entry</span>
+            </a>
+            {# --- END NEW --- #}
              {% if is_2fa_enabled %}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
                      <div class="icon"><i class="bi bi-shield-slash-fill" style="color: var(--warning);"></i></div>
@@ -52,7 +53,6 @@
     </div>
 
     <div class="main-content-wrapper">
-        {# Removed topbar, header now acts as the main bar below sidebar header #}
         <div class="header">
              <form method="GET" action="{{ url_for('vault') }}" class="search-form">
                 <div class="search-container">
@@ -62,24 +62,19 @@
                 {% if search_term %}
                     <a href="{{ url_for('vault') }}" class="btn btn-outline" title="Clear Search"><i class="bi bi-x-lg"></i></a>
                 {% endif %}
-                {# Submit button removed, rely on Enter #}
             </form>
-            <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
-                <i class="bi bi-plus-lg"></i> Add Entry
-            </button>
+            {# --- REMOVED ADD ENTRY BUTTON FROM HEADER --- #}
+            {# <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">...</button> #}
         </div>
 
-         {# Flash Messages Area #}
-         <div class="container-fluid px-4 pt-3"> {# Use container fluid for full width #}
+        {# Flash Messages Area #}
+        <div class="container-fluid px-4 pt-3">
              {% with messages = get_flashed_messages(with_categories=true) %}
                  {% if messages %}
                      {% for category, message in messages %}
                          {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
                          <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                             {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>
-                             {% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>
-                             {% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
-                             {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                             {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
                              {{ message }}
                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                          </div>
@@ -99,5 +94,6 @@
 
      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
      {% block scripts %}{% endblock %}
+
 </body>
 </html>

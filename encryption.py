@@ -15,26 +15,17 @@ def derive_key(master_password, salt):
     if not isinstance(salt, bytes): raise TypeError("Salt must be bytes")
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=config.PBKDF2_ITERATIONS)
     derived_key_bytes = kdf.derive(password_bytes); fernet_key = base64.urlsafe_b64encode(derived_key_bytes); return fernet_key
-# --- Corrected encrypt_data function ---
 def encrypt_data(data, key):
-    """Encrypts data using the derived Fernet key."""
     if not data: return b''
-    if not isinstance(key, bytes): raise TypeError("Encryption key must be bytes.")
+    if not isinstance(key, bytes): raise TypeError("Key must be bytes.")
     try:
-        # Correct indentation starts here
         f = Fernet(key)
-        # Ensure data is bytes before encrypting
         if isinstance(data, str):
             data_bytes = data.encode('utf-8')
         else:
-            data_bytes = data # Assume it's already bytes if not string
-        # Correct indentation for return
+            data_bytes = data
         return f.encrypt(data_bytes)
-    except Exception as e:
-        # Correct indentation for except
-        print(f"Error during encryption: {e}")
-        raise # Re-raise the exception
-# --- End correction ---
+    except Exception as e: print(f"Encryption error: {e}"); raise
 def decrypt_data(encrypted_data, key):
     if not encrypted_data: return '';
     if not isinstance(key, bytes): raise TypeError("Key must be bytes.")

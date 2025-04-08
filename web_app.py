@@ -91,15 +91,11 @@ def signup():
             try:
                 salt = encryption.generate_salt(); hashed_password = encryption.hash_master_password(password, salt)
                 user_id = db.add_user(username, hashed_password, salt)
-                # --- Corrected Block ---
                 if user_id:
                     flash('Account created! Please log in.', 'success');
-                    try:
-                        db.ensure_indexes()
-                    except Exception as idx_e:
-                        print(f"Warning: Could not ensure indexes after signup for user {username}: {idx_e}")
+                    try: db.ensure_indexes()
+                    except Exception as idx_e: print(f"Warning: Could not ensure indexes after signup for user {username}: {idx_e}")
                     return redirect(url_for('login'))
-                # --- End Corrected Block ---
                 else: flash('Failed to create account.', 'error')
             except Exception as e: print(f"Signup Error: {e}"); traceback.print_exc(); flash(f'Signup error: {e}', 'error')
     return render_template('quantum_signup_v2.html')
@@ -132,6 +128,7 @@ def setup_2fa():
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
 def disable_2fa():
+    # SECURITY: Add password check here in production
     user_id = session['user_id']
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
@@ -172,11 +169,11 @@ def delete_entry(entry_id):
              if success:
                  flash('Entry deleted.', 'success')
              else:
-                 flash('Failed to delete.', 'error') # Corrected flash message
+                 flash('Failed to delete entry from database.', 'error') # Corrected flash message
          except Exception as e:
-             flash(f'Error deleting: {e}', 'error')
+             flash(f'Error occurred during deletion: {e}', 'error')
      else:
-         flash('Cannot delete (not found/permission denied).', 'error')
+         flash('Cannot delete entry (not found or permission denied).', 'error')
      return redirect(url_for('vault'))
 
 # --- APIs ---

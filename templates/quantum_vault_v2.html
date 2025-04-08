@@ -1,23 +1,55 @@
-{% extends "logged_in_base_v2.html" %} {# <-- USE THE CORRECT LOGGED IN BASE TEMPLATE #}
+{% extends "logged_in_base_v2.html" %}
 
 {% block title %}Vault Dashboard{% endblock %}
 
-{% block main_content %} {# Content goes into the main_content block defined in logged_in_base_v2.html #}
-    <div class="content"> {# This div provides padding and scroll defined in quantum-v2.css #}
+{% block main_content %}
+    <div class="content"> {# Provides padding and scroll #}
 
-        {# Optional: Add a title specific to this content area if needed #}
-        {# <h2 class="section-title">Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}</h2> #}
+        {# --- NEW: Add Entry Form Section (Initially Hidden) --- #}
+        <div id="add-entry-section" class="add-entry-form-container hidden"> {# Use hidden class #}
+             <h3><i class="bi bi-plus-circle me-2"></i>Add New Vault Entry</h3>
+             <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
+                <div class="form-group">
+                    <label for="laptop_server" class="form-label">Laptop/Server ID:</label>
+                    <input type="text" class="form-input" id="laptop_server" name="laptop_server" required>
+                </div>
+                <div class="form-group">
+                    <label for="brand_label" class="form-label">Brand/Label <span class="text-muted">(Optional)</span>:</label>
+                    <input type="text" class="form-input" id="brand_label" name="brand_label">
+                </div>
+                <div class="form-group">
+                    <label for="entry_username" class="form-label">Username:</label>
+                    <input type="text" class="form-input" id="entry_username" name="entry_username" required>
+                </div>
+                 <div class="form-group">
+                    <label for="entry_password" class="form-label">Password:</label>
+                    <div class="input-group"> {# Use input group for buttons #}
+                         <input type="password" class="form-input" id="entry_password" name="entry_password" required autocomplete="new-password">
+                         <button class="btn btn-outline" type="button" id="generate-btn" title="Generate Password"><i class="bi bi-stars"></i></button>
+                         <button class="btn btn-outline" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye-fill"></i> Show</button>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-3"> {# Buttons at end #}
+                     <button type="button" class="btn btn-outline" id="cancel-add-entry">Cancel</button> {# Add Cancel button #}
+                     <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Save Entry</button>
+                </div>
+            </form>
+        </div>
+        {# --- END Add Entry Section --- #}
 
-        <div class="entries-grid"> {# Grid layout for the cards #}
+
+        {# Stored Entries Section #}
+        <h2 class="section-title mt-4"> {# Add margin top #}
+            Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}
+        </h2>
+
+        <div class="entries-grid">
             {% if entries %}
                 {% for entry in entries %}
                 <div class="entry-card">
-                    {# Icon based on first letter #}
                     <div class="entry-icon">
                         {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
                     </div>
-
-                    {# Main details section #}
                     <div class="entry-details">
                         <div class="entry-title">{{ entry.laptop_server }}</div>
                         {% if entry.brand_label %}
@@ -28,18 +60,13 @@
                         </div>
                         <div class="entry-password-area">
                             <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
-                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span> {# JS populates this #}
+                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
                             <button type="button" class="action-btn show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
-                                 <i class="bi bi-eye-fill"></i> {# Icon changes via JS #}
+                                 <i class="bi bi-eye-fill"></i>
                              </button>
                         </div>
                     </div>
-
-                    {# Action buttons (appear on hover via CSS) #}
                     <div class="entry-actions">
-                         {# Add Edit button placeholder if needed later
-                         <button class="action-btn edit-btn" data-id="{{ entry._id | string }}" title="Edit"><i class="bi bi-pencil-fill"></i></button>
-                         #}
                         <button type="button" class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
                         <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
                              <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
@@ -48,24 +75,37 @@
                 </div> {# End entry-card #}
                 {% endfor %}
             {% else %}
-                 {# Message shown when no entries match search or vault is empty #}
-                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Span full grid width #}
+                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;">
                      {% if search_term %}
-                        No entries found matching your search criteria. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
+                        No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
                      {% else %}
-                        Your vault is empty. Click the "+ Add Entry" button in the header above to add items.
+                        Vault is empty. Click "Add Entry" in the sidebar.
                      {% endif %}
                  </div>
             {% endif %}
         </div> {# End entries-grid #}
     </div> {# End content #}
 
-    {# Include the Add Entry Modal (defined in its own partial file) #}
-    {% include 'partials/_add_entry_modal.html' %}
+    {# Modal is no longer needed or included here #}
+    {# {% include 'partials/_add_entry_modal.html' %} #}
 
 {% endblock %} {# End main_content block #}
 
 {% block scripts %}
-    {# Link the JavaScript specific to this vault layout #}
     <script src="{{ url_for('static', filename='js/vault-v2.js') }}"></script>
+    {# Add JS for the new Cancel button #}
+    <script>
+        const cancelBtn = document.getElementById('cancel-add-entry');
+        const addSection = document.getElementById('add-entry-section');
+        const addSidebarBtn = document.getElementById('add-entry-sidebar-btn');
+        if (cancelBtn && addSection && addSidebarBtn) {
+            cancelBtn.addEventListener('click', function() {
+                addSection.classList.add('hidden'); // Hide the form
+                addSidebarBtn.classList.remove('active'); // Deactivate sidebar button
+                // Optional: reset the form
+                const form = addSection.querySelector('form');
+                if(form) form.reset();
+            });
+        }
+    </script>
 {% endblock %}
