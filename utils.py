@@ -3,11 +3,13 @@ import string, random, io, base64, qrcode
 from qrcode.image.pil import PilImage
 
 def generate_password(length=16):
+    """Generates a random password."""
     if length < 8: length = 8
     characters = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(characters) for i in range(length))
 
 def generate_qr_code_base64(data):
+    """Generates QR code and returns as base64 PNG."""
     try:
         qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
         qr.add_data(data); qr.make(fit=True)

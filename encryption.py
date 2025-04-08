@@ -29,7 +29,7 @@ def encrypt_data(data, key):
     try:
         f = Fernet(key)
         if isinstance(data, str): data_bytes = data.encode('utf-8')
-        else: data_bytes = data
+        else: data_bytes = data # Assume bytes if not string
         return f.encrypt(data_bytes)
     except Exception as e: print(f"Error encrypting: {e}"); raise
 
@@ -41,4 +41,4 @@ def decrypt_data(encrypted_data, key):
         f = Fernet(key)
         decrypted_bytes = f.decrypt(encrypted_data)
         return decrypted_bytes.decode('utf-8')
-    except Exception as e: print(f"Decryption failed: {e}"); return None
+    except Exception as e: print(f"Decryption failed: {e}"); return None # Indicate failure

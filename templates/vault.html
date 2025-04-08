@@ -64,7 +64,7 @@
                             <div class="input-group">
                                  <input type="password" class="form-control" id="entry_password" name="entry_password" required autocomplete="new-password">
                                  <button class="btn btn-outline-secondary" type="button" id="generate-btn" title="Generate Password"><i class="bi bi-stars"></i></button>
-                                 <button class="btn btn-outline-secondary" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye"></i></button> {# Icon only, text added by JS #}
+                                 <button class="btn btn-outline-secondary" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye"></i></button> {# Text added by JS #}
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Add Entry</button>
@@ -111,6 +111,7 @@
              </div>
         {% endif %}
     </div> {# End table-responsive #}
+
 {% endblock %}
 
 {% block scripts %}
@@ -120,25 +121,24 @@
         const showHidePassButton = document.getElementById('show-hide-btn');
         if(showHidePassButton) {
             const icon = showHidePassButton.querySelector('i'); // Find icon inside button
+             // Set initial text/icon based on input type
+            const initialPasswordInput = document.getElementById(showHidePassButton.getAttribute('data-target'));
+            if(initialPasswordInput.type === 'password') { showHidePassButton.innerHTML = `<i class="bi bi-eye"></i> Show`; }
+            else { showHidePassButton.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`; }
+
             showHidePassButton.addEventListener('click', function() {
                 const targetId = this.getAttribute('data-target');
                 const passwordInput = document.getElementById(targetId);
                 if (passwordInput && icon) {
                     if (passwordInput.type === 'password') {
-                        passwordInput.type = 'text';
-                        icon.classList.remove('bi-eye'); icon.classList.add('bi-eye-slash');
+                        passwordInput.type = 'text'; icon.classList.remove('bi-eye'); icon.classList.add('bi-eye-slash');
                         this.title = 'Hide Password'; this.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`;
                     } else {
-                        passwordInput.type = 'password';
-                        icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye');
+                        passwordInput.type = 'password'; icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye');
                         this.title = 'Show Password'; this.innerHTML = `<i class="bi bi-eye"></i> Show`;
                     }
                 }
             });
-            // Set initial text based on input type (if needed, though usually starts as password)
-             const initialPasswordInput = document.getElementById(showHidePassButton.getAttribute('data-target'));
-             if(initialPasswordInput.type === 'password') { showHidePassButton.innerHTML = `<i class="bi bi-eye"></i> Show`; }
-             else { showHidePassButton.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`; }
         }
     </script>
 {% endblock %}

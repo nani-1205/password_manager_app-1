@@ -7,6 +7,7 @@ import re
 _client = None
 _db = None
 
+# --- Connection Handling ---
 def connect_db():
     global _client, _db
     if _client is None:
@@ -14,8 +15,7 @@ def connect_db():
             connection_args = {'host': config.mongo_host, 'port': config.mongo_port, 'serverSelectionTimeoutMS': 5000, 'connectTimeoutMS': 10000}
             if config.mongo_user: connection_args.update({'username': config.mongo_user, 'password': config.mongo_password, 'authSource': config.mongo_auth_db})
             _client = MongoClient(**connection_args)
-            _client.admin.command('ping')
-            print(f"Successfully connected to MongoDB at {config.mongo_host}:{config.mongo_port}!")
+            _client.admin.command('ping'); print(f"Successfully connected to MongoDB at {config.mongo_host}:{config.mongo_port}!")
             _db = _client[config.DB_NAME]
         except Exception as e: print(f"DB Connection Error: {e}"); _client = None; _db = None; raise
     return _db
@@ -28,6 +28,7 @@ def close_db(e=None):
     global _client, _db
     if _client: _client.close(); _client = None; _db = None
 
+# --- Index Management ---
 def ensure_indexes():
     db_conn = None
     try:
@@ -35,10 +36,11 @@ def ensure_indexes():
         if db_conn:
             db_conn[config.USERS_COLLECTION].create_index("username", unique=True)
             db_conn[config.VAULT_COLLECTION].create_index("user_id")
-            db_conn[config.VAULT_COLLECTION].create_index([("user_id", 1), ("laptop_server", 1)])
+            db_conn[config.VAULT_COLLECTION].create_index([("user_id", 1), ("laptop_server", 1)]) # Index for search
             print("Database indexes ensured.")
     except Exception as e: print(f"Warning: Index creation error: {e}")
 
+# --- User Operations ---
 def find_user(username):
     try:
         db_conn = get_db()
@@ -54,6 +56,7 @@ def add_user(username, hashed_password, salt):
     except errors.DuplicateKeyError: print(f"Duplicate username: '{username}'"); return None
     except Exception as e: print(f"Error adding user '{username}': {e}"); return None
 
+# --- 2FA Management ---
 def set_user_2fa_secret(user_id, secret):
     try:
         db_conn = get_db()
@@ -75,6 +78,7 @@ def disable_user_2fa(user_id):
         return result.modified_count > 0
     except Exception as e: print(f"Error disabling 2FA user '{user_id}': {e}"); return False
 
+# --- Vault Operations ---
 def add_vault_entry(user_id, laptop_server, entry_username, encrypted_password):
     try:
         db_conn = get_db();
@@ -90,7 +94,7 @@ def get_vault_entries(user_id, search_term=None):
         if isinstance(user_id, str): query_user_id = ObjectId(user_id)
         else: query_user_id = user_id
         query = {"user_id": query_user_id}
-        if search_term: query["laptop_server"] = {"$regex": re.escape(search_term), "$options": "i"}
+        if search_term: query["laptop_server"] = {"$regex": re.escape(search_term), "$options": "i"} # Search logic
         entries = list(db_conn[config.VAULT_COLLECTION].find(query).sort("laptop_server", 1)); return entries
     except Exception as e: print(f"Error retrieving vault entries: {e}"); return []
 
@@ -100,7 +104,7 @@ def find_entry_by_id_and_user(entry_id_str, user_id_str):
         entry = db_conn[config.VAULT_COLLECTION].find_one({"_id": entry_obj_id, "user_id": user_obj_id}); return entry
     except Exception as e: print(f"Error finding entry: {e}"); return None
 
-def update_vault_entry(entry_id, laptop_server, entry_username, encrypted_password):
+def update_vault_entry(entry_id, laptop_server, entry_username, encrypted_password): # Not used by current UI but kept
     try:
         db_conn = get_db();
         if isinstance(entry_id, str): update_entry_id = ObjectId(entry_id)

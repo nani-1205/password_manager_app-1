@@ -21,14 +21,25 @@ def login_required(f):
         if session.get('2fa_required') and not session.get('2fa_passed'):
              if request.endpoint != 'login_2fa':
                  flash('Two-factor authentication is required.', 'warning'); return redirect(url_for('login_2fa'))
+        # Check if key is present if accessing vault route specifically, after login steps
+        if request.endpoint == 'vault' and 'encryption_key' not in session:
+            flash('Session error or key missing, please log in again.', 'error')
+            session.clear()
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
+# --- Standard Routes ---
 @app.route('/')
 def index():
     if 'user_id' in session: return redirect(url_for('vault'))
     return redirect(url_for('login'))
 
+@app.route('/logout')
+def logout():
+    session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
+
+# --- Auth Routes ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session and not session.get('2fa_required'): return redirect(url_for('vault'))
@@ -40,7 +51,7 @@ def login():
             session['_2fa_user_id'] = str(user_data['_id']); session['_2fa_username'] = user_data['username']; session['_2fa_salt'] = user_data['salt']
             if user_data.get('is_2fa_enabled'):
                 session['2fa_required'] = True; session.pop('_2fa_passed', None); return redirect(url_for('login_2fa'))
-            else:
+            else: # No 2FA, log in directly
                 try:
                     key = encryption.derive_key(password, user_data['salt'])
                     session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username'); session['salt'] = session.pop('_2fa_salt')
@@ -49,6 +60,7 @@ def login():
                     flash('Login successful!', 'success'); return redirect(url_for('vault'))
                 except Exception as e: flash(f'Key derivation failed: {e}', 'error'); session.clear(); return render_template('login.html')
         else: flash('Invalid username or password.', 'error'); session.clear()
+    # Clear temp session vars on GET request to login page
     session.pop('_2fa_user_id', None); session.pop('_2fa_username', None); session.pop('_2fa_salt', None)
     session.pop('2fa_required', None); session.pop('_2fa_passed', None)
     return render_template('login.html')
@@ -67,7 +79,7 @@ def login_2fa():
         if not totp_secret: flash('2FA secret not found.', 'error'); session.clear(); return redirect(url_for('login'))
         totp = pyotp.TOTP(totp_secret)
         if not totp.verify(totp_code, valid_window=1): flash('Invalid authenticator code.', 'error'); return render_template('login_2fa.html')
-        try:
+        try: # Both password and TOTP verified
             key = encryption.derive_key(password, user_data['salt'])
             session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username'); session['salt'] = session.pop('_2fa_salt')
             session['encryption_key'] = key; session['is_2fa_enabled'] = True
@@ -97,10 +109,7 @@ def signup():
             except Exception as e: flash(f'Signup error: {e}', 'error')
     return render_template('signup.html')
 
-@app.route('/logout')
-def logout():
-    session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
-
+# --- 2FA Management ---
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 @login_required
 def setup_2fa():
@@ -119,6 +128,7 @@ def setup_2fa():
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('QR generation error.', 'error'); return redirect(url_for('vault'))
             return render_template('setup_2fa.html', secret_key=secret_key, qr_code_data=qr_code_data)
+    # GET request: Generate new secret/QR
     secret_key = pyotp.random_base32()
     provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
     qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
@@ -129,15 +139,21 @@ def setup_2fa():
 @login_required
 def disable_2fa():
     user_id = session['user_id']
-    # Add password check here for better security
+    # Consider adding password verification here
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
     return redirect(url_for('vault'))
 
+# --- Vault Routes ---
 @app.route('/vault')
 @login_required
 def vault():
     user_id = session['user_id']; search_term = request.args.get('search_term', '')
+    # Retrieve encryption key here if needed, or rely on API calls needing it
+    if 'encryption_key' not in session: # Double check key exists before rendering vault
+         flash('Session error: Encryption key not found. Please log in again.', 'error')
+         session.clear()
+         return redirect(url_for('login'))
     entries = db.get_vault_entries(user_id, search_term=search_term)
     return render_template('vault.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'))
 
@@ -170,6 +186,7 @@ def delete_entry(entry_id):
      else: flash('Cannot delete entry.', 'error')
      return redirect(url_for('vault'))
 
+# --- API Routes ---
 @app.route('/generate_password')
 @login_required
 def generate_password_api():
@@ -193,14 +210,14 @@ def get_password_api(entry_id):
         else: return jsonify({'error': 'Not found/denied'}), 404
     except Exception as e: print(f"GetPass API Error: {e}"); return jsonify({'error': 'Internal error'}), 500
 
+# --- Main Execution ---
 if __name__ == '__main__':
     try:
-        print("DB Check...")
-        db_conn_check = db.connect_db()
+        print("DB Check..."); db_conn_check = db.connect_db()
         if db_conn_check is not None: # Correct check
             print("DB OK. Indexes..."); db.ensure_indexes(); db.close_db()
             print("DB Setup OK.")
         else: raise ConnectionError("DB check failed (None returned).")
     except Exception as e: print(f"\nCRITICAL: DB setup failed: {e}\n"); import sys; sys.exit(1)
-    print("Starting Flask dev server...")
+    print("Starting Flask dev server (Debug Mode)...")
     app.run(host='0.0.0.0', port=5000, debug=True) # Debug=True FOR DEV ONLY

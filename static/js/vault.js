@@ -9,14 +9,12 @@ document.addEventListener('DOMContentLoaded', function() {
         showHideButton.addEventListener('click', function() {
             const targetId = this.getAttribute('data-target');
             const passwordInput = document.getElementById(targetId);
-            if (passwordInput) {
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    this.textContent = 'Hide';
-                } else {
-                    passwordInput.type = 'password';
-                    this.textContent = 'Show';
-                }
+            // Logic to change type and text/icon is now handled in vault.html's inline script
+            // This listener block could be removed if the inline script handles everything,
+            // but keeping it ensures the basic type toggle works even if inline script fails.
+             if (passwordInput) {
+                if (passwordInput.type === 'password') { passwordInput.type = 'text'; }
+                else { passwordInput.type = 'password'; }
             }
         });
     } else {
@@ -28,10 +26,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordField = document.getElementById('entry_password');
     if (generateButton && passwordField) {
         generateButton.addEventListener('click', async function() {
-            this.textContent = 'Generating...';
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; // Loading indicator
             this.disabled = true;
             try {
-                const response = await fetch('/generate_password'); // API endpoint in Flask
+                const response = await fetch('/generate_password');
                 if (!response.ok) {
                      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch or parse error' }));
                      throw new Error(errorData.error || `Network response was not ok (${response.status})`);
@@ -40,8 +38,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.password) {
                     passwordField.type = 'text'; // Show generated password
                     passwordField.value = data.password;
-                    if(showHideButton) showHideButton.textContent = 'Hide'; // Update button text
-                    // Optionally focus the field or provide other feedback
+                    // Update show/hide button state if it exists
+                    if(showHideButton) {
+                        showHideButton.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`;
+                        showHideButton.title = 'Hide Password';
+                    }
                 } else {
                     alert('Error generating password: ' + (data.error || 'Unknown error'));
                 }
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error fetching generated password:', error);
                 alert('Could not generate password: ' + error.message);
             } finally {
-                this.textContent = 'Generate';
+                this.innerHTML = '<i class="bi bi-stars"></i>'; // Restore icon
                 this.disabled = false;
             }
         });
@@ -61,8 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.show-stored-btn').forEach(button => {
         button.addEventListener('click', async function() {
             const entryId = this.getAttribute('data-id');
-            const originalText = this.textContent;
-            this.textContent = '...'; // Loading indicator
+            const icon = this.querySelector('i');
+            const originalIconClass = icon ? icon.className : ''; // Store original icon
+            if(icon) icon.className = 'spinner-border spinner-border-sm'; // Loading indicator
             this.disabled = true;
 
             try {
@@ -72,8 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                if (data.password !== undefined) { // Check if password key exists (even if empty string)
-                    // Use alert for simplicity - better UI would use modal/tooltip
+                if (data.password !== undefined) {
                     alert(`Password:\n\n${data.password || '(empty)'}\n\n(This message will disappear)`);
                 } else {
                     alert('Could not retrieve password: ' + (data.error || 'No password data returned'));
@@ -82,9 +83,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error fetching password:', error);
                 alert('Error fetching password: ' + error.message);
             } finally {
-                 // Restore button state after short delay to allow user to see loading state
-                 setTimeout(() => {
-                    this.textContent = originalText;
+                 setTimeout(() => { // Restore after short delay
+                    if(icon) icon.className = originalIconClass; // Restore icon
                     this.disabled = false;
                  }, 300);
             }
@@ -94,15 +94,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Copy Stored Password ---
     document.querySelectorAll('.copy-btn').forEach(button => {
         button.addEventListener('click', async function() {
-            if (!navigator.clipboard) {
-                alert('Clipboard API not available in this browser or context (HTTPS required).');
-                console.warn("Clipboard API unavailable.");
-                return; // Stop if clipboard is not available
-            }
+            if (!navigator.clipboard) { alert('Clipboard API not available (HTTPS required).'); return; }
 
             const entryId = this.getAttribute('data-id');
-            const originalText = this.textContent;
-            this.textContent = '...'; // Loading indicator
+            const icon = this.querySelector('i');
+            const originalIconClass = icon ? icon.className : '';
+            const originalTitle = this.title;
+            if(icon) icon.className = 'spinner-border spinner-border-sm';
             this.disabled = true;
 
             try {
@@ -113,31 +111,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 const data = await response.json();
 
-                if (data.password !== undefined) { // Check if password key exists
+                if (data.password !== undefined) {
                     await navigator.clipboard.writeText(data.password);
-                    this.textContent = 'Copied!'; // Provide feedback
-                    // Clear clipboard and restore text after a delay
-                    setTimeout(() => {
-                        // Attempt to clear - might fail silently in some browsers/contexts
-                        navigator.clipboard.writeText('').catch(err => {});
-                        this.textContent = originalText; // Restore original text
-                    }, 3000); // 3 seconds feedback
+                    if(icon) icon.className = 'bi bi-check-lg text-success'; // Success icon
+                    this.title = 'Copied!';
+                    setTimeout(() => { // Restore after feedback
+                        navigator.clipboard.writeText('').catch(err => {}); // Attempt to clear
+                        if(icon) icon.className = originalIconClass; // Restore icon
+                        this.title = originalTitle;
+                        this.disabled = false;
+                    }, 2000); // 2 seconds feedback
                 } else {
                      alert('Could not retrieve password to copy: ' + (data.error || 'No password data returned'));
-                     this.textContent = originalText; // Restore immediately on error
-                }
+                     if(icon) icon.className = originalIconClass; // Restore immediately on error
+                     this.title = originalTitle;
+                     this.disabled = false;
+                 }
             } catch (error) {
                 console.error('Error copying password:', error);
                 alert('Error copying password: ' + error.message);
-                this.textContent = originalText; // Restore immediately on error
-            } finally {
-                // Ensure button is re-enabled *after* the timeout or on error
-                // The timeout above handles re-enabling on success after feedback period.
-                // If there was an error, it's re-enabled immediately above.
-                 if (this.textContent !== 'Copied!') { // Only re-enable immediately if not in "Copied!" state
-                     this.disabled = false;
-                 }
+                 if(icon) icon.className = originalIconClass; // Restore immediately on error
+                 this.title = originalTitle;
+                 this.disabled = false;
             }
+            // Note: Don't re-enable here if success timeout is running
         });
     });
 });
