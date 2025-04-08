@@ -1,7 +1,5 @@
-{% extends "public_base.html" %} {# Use the public base template #}
-
+{% extends "public_base_v2.html" %}
 {% block title %}Sign Up - Quantum Vault{% endblock %}
-
 {% block content %}
     <h1 class="public-title">Create Quantum Vault Account</h1>
     <form method="POST" action="{{ url_for('signup') }}">
@@ -19,7 +17,5 @@
         </div>
          <button type="submit" class="btn btn-primary w-100 mt-3">Sign Up</button>
     </form>
-     <p class="mt-4 text-center" style="font-size: 13px; color: var(--text-secondary);">
-        Already have an account? <a href="{{ url_for('login') }}" style="color: var(--primary-glow); font-weight: 500;">Login here</a>.
-    </p>
+     <p class="mt-4 text-center">Already have an account? <a href="{{ url_for('login') }}">Login here</a>.</p>
 {% endblock %}

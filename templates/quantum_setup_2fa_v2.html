@@ -1,43 +1,32 @@
-{% extends "public_base.html" %} {# Use the public base template for setup simplicity #}
-
+{% extends "public_base_v2.html" %} {# Keep setup simple #}
 {% block title %}Setup 2FA{% endblock %}
-
 {% block content %}
-    <h1 class="public-title">Setup Two-Factor Authentication</h1>
-
+    <h1 class="public-title">Setup 2FA</h1>
     <p class="text-center mb-3" style="font-size: 14px; color: var(--text-secondary);">
         Scan the QR code with your authenticator app.<br>Alternatively, manually enter the setup key below.
     </p>
-
-    <div class="text-center my-4"> {# Center QR Code #}
+    <div class="text-center my-4">
         {% if qr_code_data %}
-            <img src="{{ qr_code_data }}" alt="Authenticator QR Code" class="img-fluid" style="max-width: 200px; border: 1px solid var(--border); padding: 5px; background: white; border-radius: 8px;"> {# Added background #}
+            <img src="{{ qr_code_data }}" alt="QR Code" class="img-fluid" style="max-width: 200px; border: 1px solid var(--border); padding: 5px; background: white; border-radius: 8px;">
         {% else %}
-            <div class="flash-message danger show" style="position:relative; transform: none; opacity: 1; margin-bottom: 1rem; border-left-width: 4px;">Error generating QR code.</div>
+            <div class="alert alert-danger" role="alert">Error generating QR code.</div>
         {% endif %}
     </div>
-
     <div class="text-center mb-4">
         <label class="form-label">Setup Key (Keep Safe!)</label>
         <code class="user-select-all p-2 rounded border d-inline-block my-1" style="background-color: var(--dark-bg); border-color: var(--border); font-size: 1.1em; letter-spacing: 1px;">{{ secret_key }}</code>
     </div>
-
     <hr style="border-color: var(--border); margin: 25px 0;">
-
     <p class="text-center mb-3" style="font-size: 14px; color: var(--text-secondary);">
         Enter the 6-digit code from your app to verify.
     </p>
-
      <form method="POST" action="{{ url_for('setup_2fa') }}">
         <input type="hidden" name="secret_key" value="{{ secret_key }}">
         <div class="form-group">
-            <label for="totp_code" class="form-label">Verification Code:</label>
-            <input type="text" class="form-input" id="totp_code" name="totp_code" required autocomplete="one-time-code" inputmode="numeric" pattern="\d{6}" minlength="6" maxlength="6" title="Enter 6-digit code">
+            <label for="totp_code" class="form-label visually-hidden">Verification Code:</label>
+            <input type="text" class="form-input" id="totp_code" name="totp_code" required autocomplete="one-time-code" inputmode="numeric" pattern="\d{6}" minlength="6" maxlength="6" title="Enter 6-digit code" placeholder="Verification Code">
         </div>
         <button type="submit" class="btn btn-primary w-100 mt-3">Verify and Enable 2FA</button>
     </form>
-
-    <p class="mt-4 text-center" style="font-size: 13px;">
-        <a href="{{ url_for('vault') }}" style="color: var(--text-secondary);">Cancel Setup</a>
-    </p>
+    <p class="mt-4 text-center"><a href="{{ url_for('vault') }}" style="color: var(--text-secondary);">Cancel Setup</a></p>
 {% endblock %}
