@@ -1,216 +1,81 @@
-{% extends "logged_in_base.html" %} {# Use the logged-in base template #}
+{% extends "logged_in_base_v2.html" %} {# Use the logged-in base #}
 
 {% block title %}Vault Dashboard{% endblock %}
 
-{% block content %}
-    {# Password Generator Section (Structure Only - JS needed for functionality) #}
-    {# You might hide this by default or put it on a separate page/modal later #}
-     <div class="password-generator" style="display: none;"> {# Hide generator for now #}
-        <div class="generator-title">Password Generator</div>
-        <div class="generator-content">
-            <div class="generated-password-display">
-                <span id="generated-password-text">Generate a password...</span>
-                <button type="button" class="action-btn copy-generated-btn" title="Copy Generated Password">
-                    <i class="bi bi-clipboard"></i>
-                 </button>
+{% block main_content %} {# Content goes into the main area defined in base #}
+    <div class="header">
+         {# Search Form integrated with Flask #}
+         <form method="GET" action="{{ url_for('vault') }}" class="search-form">
+            <div class="search-container">
+                <div class="search-icon"><i class="bi bi-search"></i></div>
+                <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
             </div>
-            {# Add sliders and checkboxes here later if implementing generator UI #}
-            <button class="btn btn-primary generate-btn" id="generate-password-action-btn">
-                 <i class="bi bi-stars"></i> Generate Now
-             </button>
-        </div>
-    </div>
-
-    {# Vault Entries Section #}
-    <div class="section-header">
-        <div class="section-title">
-            Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered by "{{ search_term }}")</span>{% endif %}
-        </div>
-        {# Add sorting options here later if needed #}
-    </div>
-
-    {% if entries %}
-        {# The grid layout is handled by the .content class in quantum.css #}
-        {% for entry in entries %}
-        <div class="password-card">
-            <div class="card-header">
-                {# Display first letter of Brand/Label or Laptop/Server as icon #}
-                <div class="site-icon">
-                    {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
-                </div>
-                <div class="card-actions">
-                    {# Add Edit button later #}
-                    {# <button class="action-btn edit-btn" data-id="{{ entry._id | string }}" title="Edit"><i class="bi bi-pencil"></i></button> #}
-                    <button class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard"></i></button>
-                    <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
-                         <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash"></i></button>
-                     </form>
-                </div>
-            </div>
-            {# Main card content #}
-            <div class="card-title">{{ entry.laptop_server }}</div>
-            {% if entry.brand_label %}
-            <div class="card-subtitle">{{ entry.brand_label }}</div>
-            {% endif %}
-            <div class="card-username">
-                <strong>Username:</strong> {{ entry.entry_username }}
-            </div>
-             {# Password display placeholder - real display needs JS #}
-             <div class="password-field">
-                 <span class="password-dots" id="dots-{{ entry._id | string }}">••••••••••</span>
-                 <span class="password-text" id="text-{{ entry._id | string }}" style="display: none;"></span> {# JS will populate this #}
-                 <button type="button" class="action-btn show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
-                      <i class="bi bi-eye"></i>
-                  </button>
-             </div>
-             {# Footer (optional - last updated time requires DB field) #}
-            {# <div class="card-footer">
-                <span>Last updated: Jan 1, 2024</span>
-                <div class="strength">
-                    <div class="strength-indicator"></div> Strong
-                </div>
-            </div> #}
-        </div>
-        {% endfor %}
-    {% else %}
-         <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Span full grid width #}
+            {# Removed submit button, rely on Enter key #}
              {% if search_term %}
-                No entries found matching your search criteria. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
-             {% else %}
-                Your vault is empty. Click the "+ Add Entry" button in the header to add items.
-             {% endif %}
-         </div>
-    {% endif %}
+                <a href="{{ url_for('vault') }}" class="btn btn-outline" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </form>
 
-
-    {# Modal for Adding Entries - Initially Hidden #}
-    <div class="modal fade" id="addEntryModal" tabindex="-1" aria-labelledby="addEntryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered"> {# Bootstrap modal classes #}
-            <div class="modal-content" style="background-color: var(--panel-bg); border-color: var(--border);"> {# Apply styles #}
-                <form method="POST" action="{{ url_for('add_entry') }}"> {# Ensure form submits #}
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addEntryModalLabel" style="color: var(--primary-glow);">Add New Vault Entry</h5>
-                        <button type="button" class="close-btn" data-bs-dismiss="modal" aria-label="Close">×</button>
-                    </div>
-                    <div class="modal-body">
-                         <div class="form-group">
-                            <label for="modal_laptop_server" class="form-label">Laptop/Server ID:</label>
-                            <input type="text" class="form-input" id="modal_laptop_server" name="laptop_server" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="modal_brand_label" class="form-label">Brand/Label <span style="color: var(--text-secondary)">(Optional)</span>:</label>
-                            <input type="text" class="form-input" id="modal_brand_label" name="brand_label">
-                        </div>
-                        <div class="form-group">
-                            <label for="modal_entry_username" class="form-label">Username:</label>
-                            <input type="text" class="form-input" id="modal_entry_username" name="entry_username" required>
-                        </div>
-                         <div class="form-group">
-                            <label for="modal_entry_password" class="form-label">Password:</label>
-                            {# Consider adding generate/show-hide inside modal too later #}
-                            <input type="password" class="form-input" id="modal_entry_password" name="entry_password" required autocomplete="new-password">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Entry</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
+            <i class="bi bi-plus-lg"></i> Add Entry
+        </button>
     </div>
 
-{% endblock %}
+    <div class="content"> {# This div receives the padding and scroll from CSS #}
+        <h2 class="section-title">Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}</h2>
+
+        <div class="entries-list">
+            {% if entries %}
+                {% for entry in entries %}
+                <div class="entry-card">
+                    <div class="entry-icon">
+                        {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
+                    </div>
+                    <div class="entry-details">
+                        <div class="entry-title">{{ entry.laptop_server }}</div>
+                        {% if entry.brand_label %}
+                            <div class="entry-brand">{{ entry.brand_label }}</div>
+                        {% endif %}
+                        <div class="entry-credential">
+                           <i class="bi bi-person me-1"></i> {{ entry.entry_username }}
+                        </div>
+                        <div class="entry-password-area">
+                            <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
+                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
+                            <button type="button" class="action-btn show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
+                                 <i class="bi bi-eye-fill"></i>
+                             </button>
+                        </div>
+                    </div>
+                    <div class="entry-actions">
+                        {# Add Edit button placeholder if needed later
+                        <button class="action-btn edit-btn" data-id="{{ entry._id | string }}" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                        #}
+                        <button class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
+                        <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
+                             <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
+                         </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Use Bootstrap alert #}
+                     {% if search_term %}
+                        No entries found matching your search criteria. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
+                     {% else %}
+                        Your vault is empty. Click "+ Add Entry" to add items.
+                     {% endif %}
+                 </div>
+            {% endif %}
+        </div> {# End entries-list #}
+    </div> {# End content #}
+
+    {# --- Add Entry Modal (Using Bootstrap Structure) --- #}
+    {% include 'partials/_add_entry_modal.html' %}
+
+{% endblock %} {# End main_content block #}
 
 {% block scripts %}
-    {# Link the existing JS file - may need significant updates #}
-    <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
-    {# Add JS to handle new show/hide logic for cards #}
-    <script>
-        document.querySelectorAll('.show-stored-btn').forEach(button => {
-            button.addEventListener('click', async function() {
-                const entryId = this.getAttribute('data-id');
-                const dotsSpan = document.getElementById(`dots-${entryId}`);
-                const textSpan = document.getElementById(`text-${entryId}`);
-                const icon = this.querySelector('i');
-
-                if (!dotsSpan || !textSpan || !icon) return;
-
-                // If text is visible, hide it
-                if (textSpan.style.display !== 'none') {
-                    textSpan.style.display = 'none';
-                    dotsSpan.style.display = 'inline';
-                    icon.classList.remove('bi-eye-slash-fill');
-                    icon.classList.add('bi-eye-fill');
-                    this.title = 'Show Password';
-                } else {
-                    // Text is hidden, fetch and show it
-                    // Prevent multiple fetches if already fetched
-                    if (!textSpan.textContent) {
-                         this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; // Loading indicator
-                         this.disabled = true;
-                         try {
-                            const response = await fetch(`/get_password/${entryId}`);
-                            if (!response.ok) throw new Error('Failed to fetch password');
-                            const data = await response.json();
-                            if (data.password !== undefined) {
-                                textSpan.textContent = data.password || '(empty)';
-                            } else {
-                                textSpan.textContent = '(Error)';
-                                throw new Error(data.error || 'No password data');
-                            }
-                        } catch (error) {
-                             console.error('Error fetching password:', error);
-                             alert('Error: ' + error.message);
-                             // Restore button if fetch failed
-                             this.innerHTML = '<i class="bi bi-eye-fill"></i>';
-                             this.disabled = false;
-                             return; // Don't proceed to show
-                         } finally {
-                              this.disabled = false; // Re-enable button
-                         }
-                    }
-                    // Show text, hide dots
-                    textSpan.style.display = 'inline';
-                    dotsSpan.style.display = 'none';
-                    icon.classList.remove('bi-eye-fill');
-                    icon.classList.add('bi-eye-slash-fill');
-                    this.title = 'Hide Password';
-                    // Restore icon if loading indicator was shown
-                     if (!this.querySelector('i')) {
-                          this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>';
-                     }
-                }
-            });
-        });
-
-         // Basic copy functionality for cards (update vault.js for more robust version)
-         document.querySelectorAll('.password-card .copy-btn').forEach(button => {
-            button.addEventListener('click', async function() {
-                if (!navigator.clipboard) { alert('Clipboard API not available/permitted.'); return; }
-                const entryId = this.getAttribute('data-id');
-                const icon = this.querySelector('i');
-                const originalIconClass = icon ? icon.className : '';
-                if (icon) icon.className = 'spinner-border spinner-border-sm'; // Loading
-                this.disabled = true;
-
-                try {
-                    const response = await fetch(`/get_password/${entryId}`);
-                    if (!response.ok) throw new Error('Failed to fetch password');
-                    const data = await response.json();
-                    if (data.password !== undefined) {
-                        await navigator.clipboard.writeText(data.password);
-                        if (icon) icon.className = 'bi bi-check-lg'; // Success
-                        setTimeout(() => { if (icon) icon.className = originalIconClass; this.disabled = false; }, 2000); // Revert after 2s
-                    } else { throw new Error(data.error || 'No password data'); }
-                } catch (error) {
-                    console.error("Copy error:", error);
-                    alert("Failed to copy: " + error.message);
-                    if (icon) icon.className = originalIconClass; // Revert icon on error
-                    this.disabled = false;
-                }
-            });
-        });
-
-    </script>
+    {# Link the specific JS for this vault layout #}
+    <script src="{{ url_for('static', filename='js/vault-v2.js') }}"></script>
 {% endblock %}
