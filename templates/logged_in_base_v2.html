@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quantum Vault{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v2.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v2.css') }}"> {# <-- Link new CSS #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
-    <div class="glow-effect pulse" style="top: 20%; left: 30%;"></div>
-    <div class="glow-effect pulse" style="top: 70%; left: 70%;"></div>
+    <!-- Remove glow effects for cleaner UI -->
+    <!-- <div class="glow-effect pulse" style="top: 20%; left: 30%;"></div> -->
+    <!-- <div class="glow-effect pulse" style="top: 70%; left: 70%;"></div> -->
 
     <div class="sidebar">
         <div class="sidebar-header">
@@ -22,16 +23,6 @@
                  <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
                 <span class="menu-text">Dashboard</span>
             </a>
-             {# Add Generator Link Later #}
-             {# <a href="#" class="menu-item">
-                 <div class="icon"><i class="bi bi-stars"></i></div>
-                <span class="menu-text">Generator</span>
-            </a> #}
-             {# Add Settings Link Later #}
-             {# <a href="#" class="menu-item">
-                 <div class="icon"><i class="bi bi-gear-fill"></i></div>
-                <span class="menu-text">Settings</span>
-            </a> #}
              {# --- 2FA Status/Link --- #}
              {% if is_2fa_enabled %}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
@@ -45,6 +36,8 @@
                     <span class="menu-text">Enable 2FA</span>
                 </a>
              {% endif %}
+             {# Add Settings link later #}
+             {# <a href="#" class="menu-item">... Settings ...</a> #}
         </div>
 
         <div class="user-profile">
@@ -52,20 +45,31 @@
             <div class="user-info">
                 <div class="user-name">{{ current_username }}</div>
             </div>
-             <a href="{{ url_for('logout') }}" class="toolbar-btn" title="Logout"> {# Use toolbar-btn style #}
+             <a href="{{ url_for('logout') }}" class="toolbar-btn" title="Logout">
                  <i class="bi bi-box-arrow-right"></i>
              </a>
         </div>
     </div>
 
     <div class="main-content-wrapper">
-        <div class="topbar">
-            {# Simple topbar, remove address bar/toolbar for now #}
-            <div>{# Can add breadcrumbs or page title here later #}</div>
-            <div>{# Can add user actions here later #}</div>
+        {# Removed topbar, header now acts as the main bar below sidebar header #}
+        <div class="header">
+             <form method="GET" action="{{ url_for('vault') }}" class="search-form">
+                <div class="search-container">
+                    <div class="search-icon"><i class="bi bi-search"></i></div>
+                    <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
+                </div>
+                {% if search_term %}
+                    <a href="{{ url_for('vault') }}" class="btn btn-outline" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+                {# Submit button removed, rely on Enter #}
+            </form>
+            <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
+                <i class="bi bi-plus-lg"></i> Add Entry
+            </button>
         </div>
 
-         {# Flash Messages Area within main content #}
+         {# Flash Messages Area #}
          <div class="container-fluid px-4 pt-3"> {# Use container fluid for full width #}
              {% with messages = get_flashed_messages(with_categories=true) %}
                  {% if messages %}
@@ -84,18 +88,16 @@
              {% endwith %}
          </div>
 
+        {# Main Content Block #}
+        {% block main_content %}{% endblock %}
 
-        {% block main_content %}{% endblock %} {# Main page content goes here #}
-    </div>
+    </div> {# End main-content-wrapper #}
 
-    <!-- Fixed Logo Area -->
     <div class="fixed-logo">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
     </div>
 
-     <!-- Bootstrap Bundle JS -->
      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-     {# Link page-specific JS #}
      {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,81 +1,71 @@
-{% extends "logged_in_base_v2.html" %} {# Use the logged-in base #}
+{% extends "logged_in_base_v2.html" %} {# <-- USE THE CORRECT LOGGED IN BASE TEMPLATE #}
 
 {% block title %}Vault Dashboard{% endblock %}
 
-{% block main_content %} {# Content goes into the main area defined in base #}
-    <div class="header">
-         {# Search Form integrated with Flask #}
-         <form method="GET" action="{{ url_for('vault') }}" class="search-form">
-            <div class="search-container">
-                <div class="search-icon"><i class="bi bi-search"></i></div>
-                <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
-            </div>
-            {# Removed submit button, rely on Enter key #}
-             {% if search_term %}
-                <a href="{{ url_for('vault') }}" class="btn btn-outline" title="Clear Search"><i class="bi bi-x-lg"></i></a>
-            {% endif %}
-        </form>
+{% block main_content %} {# Content goes into the main_content block defined in logged_in_base_v2.html #}
+    <div class="content"> {# This div provides padding and scroll defined in quantum-v2.css #}
 
-        <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
-            <i class="bi bi-plus-lg"></i> Add Entry
-        </button>
-    </div>
+        {# Optional: Add a title specific to this content area if needed #}
+        {# <h2 class="section-title">Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}</h2> #}
 
-    <div class="content"> {# This div receives the padding and scroll from CSS #}
-        <h2 class="section-title">Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}</h2>
-
-        <div class="entries-list">
+        <div class="entries-grid"> {# Grid layout for the cards #}
             {% if entries %}
                 {% for entry in entries %}
                 <div class="entry-card">
+                    {# Icon based on first letter #}
                     <div class="entry-icon">
                         {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
                     </div>
+
+                    {# Main details section #}
                     <div class="entry-details">
                         <div class="entry-title">{{ entry.laptop_server }}</div>
                         {% if entry.brand_label %}
                             <div class="entry-brand">{{ entry.brand_label }}</div>
                         {% endif %}
                         <div class="entry-credential">
-                           <i class="bi bi-person me-1"></i> {{ entry.entry_username }}
+                           <i class="bi bi-person"></i> {{ entry.entry_username }}
                         </div>
                         <div class="entry-password-area">
                             <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
-                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
+                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span> {# JS populates this #}
                             <button type="button" class="action-btn show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
-                                 <i class="bi bi-eye-fill"></i>
+                                 <i class="bi bi-eye-fill"></i> {# Icon changes via JS #}
                              </button>
                         </div>
                     </div>
+
+                    {# Action buttons (appear on hover via CSS) #}
                     <div class="entry-actions">
-                        {# Add Edit button placeholder if needed later
-                        <button class="action-btn edit-btn" data-id="{{ entry._id | string }}" title="Edit"><i class="bi bi-pencil-fill"></i></button>
-                        #}
-                        <button class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
+                         {# Add Edit button placeholder if needed later
+                         <button class="action-btn edit-btn" data-id="{{ entry._id | string }}" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                         #}
+                        <button type="button" class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
                         <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
                              <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
                          </form>
                     </div>
-                </div>
+                </div> {# End entry-card #}
                 {% endfor %}
             {% else %}
-                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Use Bootstrap alert #}
+                 {# Message shown when no entries match search or vault is empty #}
+                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Span full grid width #}
                      {% if search_term %}
                         No entries found matching your search criteria. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
                      {% else %}
-                        Your vault is empty. Click "+ Add Entry" to add items.
+                        Your vault is empty. Click the "+ Add Entry" button in the header above to add items.
                      {% endif %}
                  </div>
             {% endif %}
-        </div> {# End entries-list #}
+        </div> {# End entries-grid #}
     </div> {# End content #}
 
-    {# --- Add Entry Modal (Using Bootstrap Structure) --- #}
+    {# Include the Add Entry Modal (defined in its own partial file) #}
     {% include 'partials/_add_entry_modal.html' %}
 
 {% endblock %} {# End main_content block #}
 
 {% block scripts %}
-    {# Link the specific JS for this vault layout #}
+    {# Link the JavaScript specific to this vault layout #}
     <script src="{{ url_for('static', filename='js/vault-v2.js') }}"></script>
 {% endblock %}
