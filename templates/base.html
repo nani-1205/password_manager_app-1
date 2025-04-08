@@ -1,145 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark"> {# Apply dark theme globally #}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Password Vault{% endblock %}</title>
+    <title>{% block title %}Secure Vault{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <!-- Optional: Bootstrap Icons -->
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
-    <!-- Custom CSS Rules -->
+    <!-- Custom CSS -->
     <style>
-        /* Custom styles */
-        body {
-            padding-top: 56px; /* Adjust based on navbar height */
-            padding-bottom: 60px; /* Space for potential footer content + logo */
-            background-color: #f8f9fa; /* Light background */
+        :root {
+            --accent-color: #0dcaf0; /* Cyan */
+            --accent-color-rgb: 13, 202, 240;
+            --bs-primary: var(--accent-color);
+            --bs-primary-rgb: var(--accent-color-rgb);
+            --bs-link-color: var(--accent-color);
+            --bs-link-hover-color: #4ad0f2;
         }
-        .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
-        }
-        .container {
-            margin-top: 2rem; /* Add some space below the navbar */
-        }
-        .card {
-             margin-top: 1rem;
-             margin-bottom: 1rem;
-        }
-        /* Styling for the fixed logo */
-        .fixed-logo {
-            position: fixed;
-            bottom: 15px; /* Adjust vertical position */
-            right: 20px; /* Adjust horizontal position */
-            z-index: 1030; /* Ensure it's above most content */
-            opacity: 0.7; /* Slightly transparent */
-            transition: opacity 0.2s ease-in-out;
-        }
-        .fixed-logo img {
-            max-height: 40px; /* Control logo size */
-            width: auto;
-        }
-        .fixed-logo:hover {
-            opacity: 1.0; /* Full opacity on hover */
-        }
-        /* Make action buttons smaller */
-        .table .btn-sm {
-             padding: 0.2rem 0.4rem;
-             font-size: 0.8rem;
-        }
-        .table .btn-group {
-             white-space: nowrap; /* Prevent buttons wrapping */
-        }
-        /* Minor tweak for search clear button alignment */
-        .search-clear a {
-             display: inline-flex;
-             align-items: center;
-        }
-         /* Make table cells break long words if needed */
-        td {
-            word-break: break-all;
-        }
+        body { padding-top: 56px; padding-bottom: 70px; min-height: 100vh; }
+        .navbar { background-color: var(--bs-dark) !important; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.3); }
+        .navbar-brand { color: var(--accent-color) !important; font-weight: bold; }
+        .container { margin-top: 2rem; }
+        .card { border: 1px solid rgba(var(--bs-emphasis-color-rgb), 0.2); background-color: var(--bs-tertiary-bg); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+        hr { border-color: rgba(var(--bs-emphasis-color-rgb), 0.15); }
+        .form-control { background-color: rgba(var(--bs-emphasis-color-rgb), 0.05); border: 1px solid rgba(var(--bs-emphasis-color-rgb), 0.2); color: var(--bs-body-color); }
+        .form-control:focus { background-color: rgba(var(--bs-emphasis-color-rgb), 0.1); border-color: var(--accent-color); box-shadow: 0 0 8px 1px rgba(var(--accent-color-rgb), 0.4); }
+        label.form-label { color: var(--bs-secondary-color); }
+        .btn-primary { border: none; box-shadow: 0 0 8px 0px rgba(var(--accent-color-rgb), 0.3); transition: background-color 0.2s ease, box-shadow 0.2s ease; }
+        .btn-primary:hover { box-shadow: 0 0 12px 2px rgba(var(--accent-color-rgb), 0.5); background-color: #0ca8cc; }
+        .btn-outline-secondary, .btn-outline-primary, .btn-outline-danger { border-width: 1px; transition: background-color 0.2s ease, color 0.2s ease; }
+        .table { border-color: rgba(var(--bs-emphasis-color-rgb), 0.2); vertical-align: middle;}
+        .table-hover > tbody > tr:hover > * { background-color: rgba(var(--accent-color-rgb), 0.1); }
+        .table th { background-color: rgba(var(--bs-emphasis-color-rgb), 0.1); border-bottom-width: 1px; }
+        .alert { border-width: 1px; border-left-width: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); }
+        .alert-danger { border-left-color: var(--bs-danger); } .alert-success { border-left-color: var(--bs-success); } .alert-warning { border-left-color: var(--bs-warning); } .alert-info { border-left-color: var(--bs-info); }
+        .alert a { font-weight: bold; color: inherit !important; text-decoration: underline;}
+        .fixed-logo { position: fixed; bottom: 15px; right: 20px; z-index: 1030; opacity: 0.6; transition: opacity 0.2s ease-in-out; }
+        .fixed-logo img { max-height: 35px; width: auto; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); /* Optional: Invert if logo is dark: filter: brightness(0) invert(1); */ }
+        .fixed-logo:hover { opacity: 1.0; }
+        .badge { font-size: 0.85em; }
+        code { background-color: rgba(var(--bs-emphasis-color-rgb), 0.15) !important; color: var(--bs-info); padding: .2em .4em; border-radius: 3px; font-size: 0.9em;}
+        .accordion-button::after { filter: brightness(0) invert(1); } /* White chevron */
+        .form-floating>label { color: #6c757d; } /* Floating label color */
     </style>
-    <!-- END OF CUSTOM CSS -->
-
 </head>
 <body>
     <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-shield-lock"></i> <!-- Example icon -->
-                Password Vault
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <a class="navbar-brand" href="{{ url_for('index') }}"><i class="bi bi-shield-shaded"></i> Secure Vault</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if session.get('user_id') %}
-                        <li class="nav-item">
-                            <span class="navbar-text me-3">
-                                Welcome, {{ session.get('username', 'User') }}!
-                            </span>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'vault' %}active{% endif %}" aria-current="page" href="{{ url_for('vault') }}">Vault</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-                        </li>
+                        <li class="nav-item"><span class="navbar-text me-3"><i class="bi bi-person"></i> {{ session.get('username', 'User') }}</span></li>
+                        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'vault' %}active{% endif %}" href="{{ url_for('vault') }}"><i class="bi bi-key"></i> Vault</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                     {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}" href="{{ url_for('login') }}">Login</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'signup' %}active{% endif %}" href="{{ url_for('signup') }}">Sign Up</a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}" href="{{ url_for('login') }}"><i class="bi bi-box-arrow-in-right"></i> Login</a></li>
+                        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'signup' %}active{% endif %}" href="{{ url_for('signup') }}"><i class="bi bi-person-plus"></i> Sign Up</a></li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
-
     <!-- Main Content Area -->
     <div class="container">
-        {# Display flashed messages using Bootstrap alerts #}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    {# Map flash categories to Bootstrap alert types #}
-                    {% set alert_type = 'info' %} {# Default #}
-                    {% if category == 'error' %}
-                        {% set alert_type = 'danger' %}
-                    {% elif category == 'success' %}
-                        {% set alert_type = 'success' %}
-                    {% elif category == 'warning' %}
-                        {% set alert_type = 'warning' %}
-                    {% endif %}
-                    <div class="alert alert-{{ alert_type }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                    {% set alert_type = 'info' %}; {% if category == 'error' %}{% set alert_type = 'danger' %}{% elif category == 'success' %}{% set alert_type = 'success' %}{% elif category == 'warning' %}{% set alert_type = 'warning' %}{% endif %}
+                    <div class="alert alert-{{ alert_type }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
-        <main>
-            {% block content %}{% endblock %}
-        </main>
+        <main class="mt-3">{% block content %}{% endblock %}</main>
     </div>
-
     <!-- Fixed Logo Area -->
-    <div class="fixed-logo">
-        {# Ensure the path matches where you put the logo #}
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
-    </div>
-
-    <!-- Bootstrap Bundle JS (includes Popper) -->
+    <div class="fixed-logo"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo"></div>
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-
-    {# Block for page-specific JavaScript #}
     {% block scripts %}{% endblock %}
 </body>
 </html>
