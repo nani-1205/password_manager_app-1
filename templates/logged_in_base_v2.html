@@ -19,26 +19,22 @@
                  <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
                 <span class="menu-text">Dashboard</span>
             </a>
-            {# --- NEW ADD ENTRY BUTTON --- #}
             <a href="#" class="menu-item" id="add-entry-sidebar-btn">
                  <div class="icon"><i class="bi bi-plus-circle-fill"></i></div>
                 <span class="menu-text">Add Entry</span>
             </a>
-            {# --- END NEW --- #}
              {% if is_2fa_enabled %}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
-                     <div class="icon"><i class="bi bi-shield-slash-fill" style="color: var(--warning);"></i></div>
+                     <div class="icon"><i class="bi bi-shield-slash-fill text-warning"></i></div> {# Use Bootstrap text color #}
                     <span class="menu-text">Disable 2FA</span>
                  </a>
                  <form id="disable-2fa-form" method="POST" action="{{ url_for('disable_2fa') }}" style="display: none;"></form>
              {% else %}
                   <a href="{{ url_for('setup_2fa') }}" class="menu-item {% if request.endpoint == 'setup_2fa' %}active{% endif %}" title="Enable 2FA">
-                     <div class="icon"><i class="bi bi-shield-lock-fill" style="color: var(--success);"></i></div>
+                     <div class="icon"><i class="bi bi-shield-lock-fill text-success"></i></div> {# Use Bootstrap text color #}
                     <span class="menu-text">Enable 2FA</span>
                 </a>
              {% endif %}
-             {# Add Settings link later #}
-             {# <a href="#" class="menu-item">... Settings ...</a> #}
         </div>
 
         <div class="user-profile">
@@ -46,7 +42,8 @@
             <div class="user-info">
                 <div class="user-name">{{ current_username }}</div>
             </div>
-             <a href="{{ url_for('logout') }}" class="toolbar-btn" title="Logout">
+             {# Changed to icon-only button #}
+             <a href="{{ url_for('logout') }}" class="action-btn-icon-only" title="Logout">
                  <i class="bi bi-box-arrow-right"></i>
              </a>
         </div>
@@ -60,23 +57,37 @@
                     <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
                 </div>
                 {% if search_term %}
-                    <a href="{{ url_for('vault') }}" class="btn btn-outline" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                    {# Use icon only button for Clear Search #}
+                    <a href="{{ url_for('vault') }}" class="btn btn-outline btn-icon" title="Clear Search">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                {% else %}
+                    {# Optional: Can have a disabled or different style search button #}
+                     <button type="submit" class="btn btn-primary btn-icon btn-search" title="Search">
+                        <i class="bi bi-search"></i>
+                    </button>
                 {% endif %}
+
             </form>
-            {# --- REMOVED ADD ENTRY BUTTON FROM HEADER --- #}
-            {# <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">...</button> #}
+             {# Add Entry button stays text+icon for clarity #}
+            <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
+                <i class="bi bi-plus-lg"></i> Add Entry
+            </button>
         </div>
 
-        {# Flash Messages Area #}
-        <div class="container-fluid px-4 pt-3">
+         {# Flash Messages Area - Using Bootstrap structure #}
+         <div class="container-fluid px-4 pt-3">
              {% with messages = get_flashed_messages(with_categories=true) %}
                  {% if messages %}
                      {% for category, message in messages %}
                          {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
                          <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                             {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                             {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>
+                             {% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>
+                             {% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
+                             {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
                              {{ message }}
-                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                             <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
                          </div>
                      {% endfor %}
                  {% endif %}

@@ -3,10 +3,10 @@
 {% block title %}Vault Dashboard{% endblock %}
 
 {% block main_content %}
-    <div class="content"> {# Provides padding and scroll #}
+    <div class="content">
 
-        {# --- NEW: Add Entry Form Section (Initially Hidden) --- #}
-        <div id="add-entry-section" class="add-entry-form-container hidden"> {# Use hidden class #}
+        {# --- Add Entry Form Section (Initially Hidden) --- #}
+        <div id="add-entry-section" class="add-entry-form-container hidden">
              <h3><i class="bi bi-plus-circle me-2"></i>Add New Vault Entry</h3>
              <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
                 <div class="form-group">
@@ -23,23 +23,25 @@
                 </div>
                  <div class="form-group">
                     <label for="entry_password" class="form-label">Password:</label>
-                    <div class="input-group"> {# Use input group for buttons #}
+                    <div class="input-group">
                          <input type="password" class="form-input" id="entry_password" name="entry_password" required autocomplete="new-password">
+                         {# --- UPDATED BUTTONS with Icons --- #}
                          <button class="btn btn-outline" type="button" id="generate-btn" title="Generate Password"><i class="bi bi-stars"></i></button>
-                         <button class="btn btn-outline" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye-fill"></i> Show</button>
+                         <button class="btn btn-outline" type="button" id="show-hide-btn" data-target="entry_password" title="Show Password"><i class="bi bi-eye-fill"></i></button>
+                         {# --- END UPDATED BUTTONS --- #}
                     </div>
                 </div>
-                <div class="d-flex justify-content-end gap-2 mt-3"> {# Buttons at end #}
-                     <button type="button" class="btn btn-outline" id="cancel-add-entry">Cancel</button> {# Add Cancel button #}
+                <div class="form-buttons">
+                    {# --- UPDATED BUTTONS with Icons --- #}
+                     <button type="button" class="btn btn-outline" id="cancel-add-entry"><i class="bi bi-x-lg"></i> Cancel</button>
                      <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Save Entry</button>
+                    {# --- END UPDATED BUTTONS --- #}
                 </div>
             </form>
         </div>
-        {# --- END Add Entry Section --- #}
-
 
         {# Stored Entries Section #}
-        <h2 class="section-title mt-4"> {# Add margin top #}
+        <h2 class="section-title mt-4">
             Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}
         </h2>
 
@@ -47,54 +49,49 @@
             {% if entries %}
                 {% for entry in entries %}
                 <div class="entry-card">
-                    <div class="entry-icon">
-                        {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
-                    </div>
+                    <div class="entry-icon"> {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }} </div>
                     <div class="entry-details">
                         <div class="entry-title">{{ entry.laptop_server }}</div>
-                        {% if entry.brand_label %}
-                            <div class="entry-brand">{{ entry.brand_label }}</div>
-                        {% endif %}
-                        <div class="entry-credential">
-                           <i class="bi bi-person"></i> {{ entry.entry_username }}
-                        </div>
+                        {% if entry.brand_label %}<div class="entry-brand">{{ entry.brand_label }}</div>{% endif %}
+                        <div class="entry-credential"><i class="bi bi-person"></i> {{ entry.entry_username }}</div>
                         <div class="entry-password-area">
                             <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
                             <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
-                            <button type="button" class="action-btn show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
+                            {# --- UPDATED BUTTON with Icon --- #}
+                            <button type="button" class="action-btn-icon-only show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
                                  <i class="bi bi-eye-fill"></i>
                              </button>
+                             {# --- END UPDATED BUTTON --- #}
                         </div>
                     </div>
                     <div class="entry-actions">
-                        <button type="button" class="action-btn copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
+                        {# --- UPDATED BUTTONS with Icons --- #}
+                        <button type="button" class="action-btn-icon-only copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
                         <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
-                             <button type="submit" class="action-btn delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
+                             <button type="submit" class="action-btn-icon-only delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
                          </form>
+                         {# --- END UPDATED BUTTONS --- #}
                     </div>
-                </div> {# End entry-card #}
+                </div>
                 {% endfor %}
             {% else %}
                  <div class="alert alert-info mt-3" style="grid-column: 1 / -1;">
-                     {% if search_term %}
-                        No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
-                     {% else %}
-                        Vault is empty. Click "Add Entry" in the sidebar.
-                     {% endif %}
+                     {% if search_term %} No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
+                     {% else %} Vault is empty. Click "Add Entry" in the sidebar. {% endif %}
                  </div>
             {% endif %}
-        </div> {# End entries-grid #}
-    </div> {# End content #}
+        </div>
+    </div>
 
-    {# Modal is no longer needed or included here #}
-    {# {% include 'partials/_add_entry_modal.html' %} #}
+    {# Modal is no longer used for Add Entry #}
 
-{% endblock %} {# End main_content block #}
+{% endblock %}
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/vault-v2.js') }}"></script>
-    {# Add JS for the new Cancel button #}
+    {# Add JS for the new Cancel button and Show/Hide toggle text #}
     <script>
+        // Cancel Button Logic
         const cancelBtn = document.getElementById('cancel-add-entry');
         const addSection = document.getElementById('add-entry-section');
         const addSidebarBtn = document.getElementById('add-entry-sidebar-btn');
@@ -102,10 +99,26 @@
             cancelBtn.addEventListener('click', function() {
                 addSection.classList.add('hidden'); // Hide the form
                 addSidebarBtn.classList.remove('active'); // Deactivate sidebar button
-                // Optional: reset the form
                 const form = addSection.querySelector('form');
-                if(form) form.reset();
+                if(form) form.reset(); // Reset form fields
             });
         }
+
+        // Show/Hide Button Text/Icon Toggle (Add Entry Form)
+        const showHideBtnAddForm = document.querySelector('#add-entry-form #show-hide-btn');
+        if (showHideBtnAddForm) {
+             showHideBtnAddForm.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target'); // Should be 'entry_password'
+                const passwordInput = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+                if(passwordInput && icon) {
+                    if (passwordInput.type === 'password') {
+                         icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
+                     } else {
+                         icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
+                     }
+                 }
+             });
+         }
     </script>
 {% endblock %}
