@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Quantum Vault{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum.css') }}">
+    <!-- Add any specific styles for public pages if needed -->
+    <style>
+        .public-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .public-card {
+            width: 100%;
+            max-width: 450px; /* Limit width of login/signup card */
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .public-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-glow);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-effect pulse" style="top: 10%; left: 10%;"></div>
+    <div class="glow-effect pulse" style="top: 60%; left: 80%;"></div>
+
+    <div class="public-container">
+        <div class="public-card">
+            {# Display flashed messages #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_class = 'info' %}
+                        {% if category == 'error' %}{% set alert_class = 'danger' %}
+                        {% elif category == 'success' %}{% set alert_class = 'success' %}
+                        {% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
+                        <div class="flash-message {{ alert_class }}" style="position: relative; bottom: auto; right: auto; transform: none; opacity: 1; margin-bottom: 15px; border-left-width: 4px; border-radius: 4px;">
+                             <div class="flash-content">
+                                <span class="flash-message-text">{{ message }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Fixed Logo Area -->
+    <div class="fixed-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
+    </div>
+
+    {# Block for page-specific JavaScript #}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

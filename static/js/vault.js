@@ -1,143 +1,169 @@
 // static/js/vault.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Vault JS Loaded"); // Check if script runs
+    console.log("Quantum Vault JS Loaded");
 
-    // --- Add/Edit Form Password Visibility ---
-    const showHideButton = document.getElementById('show-hide-btn');
-    if (showHideButton) {
-        showHideButton.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
+    // --- Password Generator Button (Placeholder Action) ---
+    const generatePasswordActionButton = document.getElementById('generate-password-action-btn');
+    const generatedPasswordTextSpan = document.getElementById('generated-password-text');
+    if (generatePasswordActionButton && generatedPasswordTextSpan) {
+        generatePasswordActionButton.addEventListener('click', async function() {
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+            this.disabled = true;
+            try {
+                const response = await fetch('/generate_password');
+                if (!response.ok) throw new Error('Failed to generate');
+                const data = await response.json();
+                if (data.password) {
+                    generatedPasswordTextSpan.textContent = data.password;
+                } else {
+                    generatedPasswordTextSpan.textContent = 'Error!';
+                    throw new Error(data.error || 'Unknown generation error');
+                }
+            } catch (error) {
+                console.error('Generate Password Error:', error);
+                alert('Error generating password: ' + error.message);
+                 generatedPasswordTextSpan.textContent = 'Error generating...';
+            } finally {
+                 this.innerHTML = '<i class="bi bi-stars"></i> Generate Now';
+                 this.disabled = false;
+            }
+        });
+    }
+
+    // --- Copy Generated Password Button ---
+    document.querySelectorAll('.copy-generated-btn').forEach(button => {
+         button.addEventListener('click', function() {
+             if (!navigator.clipboard) { alert('Clipboard API not available/permitted.'); return; }
+             const passwordText = generatedPasswordTextSpan ? generatedPasswordTextSpan.textContent : null;
+             if (passwordText && passwordText !== 'Generate a password...' && passwordText !== 'Error generating...') {
+                 navigator.clipboard.writeText(passwordText).then(() => {
+                     // Simple visual feedback (optional)
+                     const originalIcon = this.innerHTML;
+                     this.innerHTML = '<i class="bi bi-check-lg"></i>';
+                     setTimeout(() => { this.innerHTML = originalIcon; }, 1500);
+                 }).catch(err => {
+                     console.error('Failed to copy generated password:', err);
+                     alert('Failed to copy password.');
+                 });
+             } else {
+                 alert('No password generated yet or error occurred.');
+             }
+         });
+    });
+
+
+    // --- Show/Hide Password in Add/Edit Modal (Example, if needed later) ---
+    // This targets a specific modal button if you add one
+    const showHideModalButton = document.getElementById('modal-show-hide-btn'); // Example ID
+    if (showHideModalButton) {
+        showHideModalButton.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target'); // e.g., 'modal_entry_password'
             const passwordInput = document.getElementById(targetId);
-            if (passwordInput) {
+            const icon = this.querySelector('i');
+            if (passwordInput && icon) {
                 if (passwordInput.type === 'password') {
                     passwordInput.type = 'text';
-                    this.textContent = 'Hide';
+                    icon.classList.remove('bi-eye-fill'); icon.classList.add('bi-eye-slash-fill');
+                    this.title = 'Hide Password';
                 } else {
                     passwordInput.type = 'password';
-                    this.textContent = 'Show';
+                    icon.classList.remove('bi-eye-slash-fill'); icon.classList.add('bi-eye-fill');
+                     this.title = 'Show Password';
                 }
             }
         });
-    } else {
-        console.log("Show/Hide button not found");
     }
 
-    // --- Generate Password ---
-    const generateButton = document.getElementById('generate-btn');
-    const passwordField = document.getElementById('entry_password');
-    if (generateButton && passwordField) {
-        generateButton.addEventListener('click', async function() {
-            this.textContent = 'Generating...';
+    // --- Show/Hide Stored Password in Vault Cards ---
+    document.querySelectorAll('.password-card .show-stored-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const entryId = this.getAttribute('data-id');
+            const dotsSpan = document.getElementById(`dots-${entryId}`);
+            const textSpan = document.getElementById(`text-${entryId}`);
+            const icon = this.querySelector('i');
+
+            if (!dotsSpan || !textSpan || !icon) return;
+
+            if (textSpan.style.display !== 'none') { // Hide
+                textSpan.style.display = 'none'; textSpan.textContent = ''; // Clear fetched pass on hide
+                dotsSpan.style.display = 'inline';
+                icon.classList.remove('bi-eye-slash-fill'); icon.classList.add('bi-eye-fill');
+                this.title = 'Show Password';
+            } else { // Show
+                if (!textSpan.textContent) { // Fetch only if not already fetched
+                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                     this.disabled = true;
+                     try {
+                        const response = await fetch(`/get_password/${entryId}`);
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(()=>({error: `HTTP ${response.status}`}));
+                            throw new Error(errorData.error || 'Failed to fetch');
+                        }
+                        const data = await response.json();
+                        if (data.password !== undefined) textSpan.textContent = data.password || '(empty)';
+                        else throw new Error(data.error || 'No password data');
+                    } catch (error) {
+                         console.error('Show Stored Error:', error); alert('Error: ' + error.message);
+                         this.innerHTML = '<i class="bi bi-eye-fill"></i>'; this.disabled = false; return;
+                     } finally { this.disabled = false; }
+                }
+                // Show text, hide dots
+                textSpan.style.display = 'inline'; dotsSpan.style.display = 'none';
+                icon.classList.remove('bi-eye-fill'); icon.classList.add('bi-eye-slash-fill');
+                this.title = 'Hide Password';
+                // Restore icon if loading indicator was shown
+                 if (!this.querySelector('i')) this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>';
+            }
+        });
+    });
+
+    // --- Copy Stored Password from Vault Cards ---
+    document.querySelectorAll('.password-card .copy-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            if (!navigator.clipboard) { alert('Clipboard API not available/permitted.'); return; }
+            const entryId = this.getAttribute('data-id');
+            const icon = this.querySelector('i');
+            const originalIconClass = icon ? icon.className : 'bi bi-clipboard';
+            if (icon) icon.className = 'spinner-border spinner-border-sm';
             this.disabled = true;
+
             try {
-                const response = await fetch('/generate_password'); // API endpoint in Flask
+                const response = await fetch(`/get_password/${entryId}`);
                 if (!response.ok) {
-                     const errorData = await response.json().catch(() => ({ error: 'Failed to fetch or parse error' }));
-                     throw new Error(errorData.error || `Network response was not ok (${response.status})`);
+                    const errorData = await response.json().catch(()=>({error: `HTTP ${response.status}`}));
+                    throw new Error(errorData.error || 'Failed to fetch');
                 }
                 const data = await response.json();
-                if (data.password) {
-                    passwordField.type = 'text'; // Show generated password
-                    passwordField.value = data.password;
-                    if(showHideButton) showHideButton.textContent = 'Hide'; // Update button text
-                    // Optionally focus the field or provide other feedback
-                } else {
-                    alert('Error generating password: ' + (data.error || 'Unknown error'));
-                }
+                if (data.password !== undefined) {
+                    await navigator.clipboard.writeText(data.password);
+                    if (icon) icon.className = 'bi bi-check-lg'; // Success
+                    setTimeout(() => { if (icon) icon.className = originalIconClass; this.disabled = false; }, 2000);
+                } else { throw new Error(data.error || 'No password data'); }
             } catch (error) {
-                console.error('Error fetching generated password:', error);
-                alert('Could not generate password: ' + error.message);
-            } finally {
-                this.textContent = 'Generate';
+                console.error("Copy error:", error); alert("Failed to copy: " + error.message);
+                if (icon) icon.className = originalIconClass; // Revert icon on error
                 this.disabled = false;
             }
         });
-    } else {
-         console.log("Generate button or password field not found");
-    }
-
-    // --- Show Stored Password (Temporary Alert) ---
-    document.querySelectorAll('.show-stored-btn').forEach(button => {
-        button.addEventListener('click', async function() {
-            const entryId = this.getAttribute('data-id');
-            const originalText = this.textContent;
-            this.textContent = '...'; // Loading indicator
-            this.disabled = true;
-
-            try {
-                const response = await fetch(`/get_password/${entryId}`);
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Failed to fetch or parse error' }));
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (data.password !== undefined) { // Check if password key exists (even if empty string)
-                    // Use alert for simplicity - better UI would use modal/tooltip
-                    alert(`Password:\n\n${data.password || '(empty)'}\n\n(This message will disappear)`);
-                } else {
-                    alert('Could not retrieve password: ' + (data.error || 'No password data returned'));
-                }
-            } catch (error) {
-                console.error('Error fetching password:', error);
-                alert('Error fetching password: ' + error.message);
-            } finally {
-                 // Restore button state after short delay to allow user to see loading state
-                 setTimeout(() => {
-                    this.textContent = originalText;
-                    this.disabled = false;
-                 }, 300);
-            }
-        });
     });
 
-    // --- Copy Stored Password ---
-    document.querySelectorAll('.copy-btn').forEach(button => {
-        button.addEventListener('click', async function() {
-            if (!navigator.clipboard) {
-                alert('Clipboard API not available in this browser or context (HTTPS required).');
-                console.warn("Clipboard API unavailable.");
-                return; // Stop if clipboard is not available
-            }
-
-            const entryId = this.getAttribute('data-id');
-            const originalText = this.textContent;
-            this.textContent = '...'; // Loading indicator
-            this.disabled = true;
-
-            try {
-                const response = await fetch(`/get_password/${entryId}`);
-                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Failed to fetch or parse error' }));
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-
-                if (data.password !== undefined) { // Check if password key exists
-                    await navigator.clipboard.writeText(data.password);
-                    this.textContent = 'Copied!'; // Provide feedback
-                    // Clear clipboard and restore text after a delay
-                    setTimeout(() => {
-                        // Attempt to clear - might fail silently in some browsers/contexts
-                        navigator.clipboard.writeText('').catch(err => {});
-                        this.textContent = originalText; // Restore original text
-                    }, 3000); // 3 seconds feedback
-                } else {
-                     alert('Could not retrieve password to copy: ' + (data.error || 'No password data returned'));
-                     this.textContent = originalText; // Restore immediately on error
-                }
-            } catch (error) {
-                console.error('Error copying password:', error);
-                alert('Error copying password: ' + error.message);
-                this.textContent = originalText; // Restore immediately on error
-            } finally {
-                // Ensure button is re-enabled *after* the timeout or on error
-                // The timeout above handles re-enabling on success after feedback period.
-                // If there was an error, it's re-enabled immediately above.
-                 if (this.textContent !== 'Copied!') { // Only re-enable immediately if not in "Copied!" state
-                     this.disabled = false;
+     // --- Basic Flash Message Hiding ---
+     // Note: This uses the simpler style from logged_in_base.html's inline script
+     // If using the notification style from quantum.css, more complex JS is needed
+     document.querySelectorAll('.flash-message.show').forEach(function(flash) {
+         if (!flash.closest('.public-card')) { // Don't auto-hide on public pages where flash might be important
+             setTimeout(function() {
+                 let bsAlert = bootstrap.Alert.getInstance(flash.closest('.alert')); // If using BS alerts
+                 if (bsAlert) {
+                     bsAlert.close();
+                 } else { // Fallback for custom flash
+                    flash.style.opacity = '0';
+                    // Add further transition logic if needed
+                    setTimeout(function() { flash.remove(); }, 500);
                  }
-            }
-        });
-    });
-});
+             }, 5000); // Hide after 5 seconds
+         }
+     });
+
+}); // End DOMContentLoaded
