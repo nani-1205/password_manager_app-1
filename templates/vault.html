@@ -1,70 +1,71 @@
 {% extends "base.html" %}
+
 {% block title %}Your Vault{% endblock %}
 
 {% block content %}
     <h1 class="mb-4">Your Password Vault</h1>
 
-    {# 2FA Status Card #}
-     <div class="card mb-4 shadow-sm">
-         <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-             <div>
-                 <h5 class="card-title mb-0 d-inline-block me-2">Two-Factor Authentication</h5>
-                 {% if session.get('is_2fa_enabled') %} <span class="badge bg-success align-middle">Enabled</span>
-                 {% else %} <span class="badge bg-danger align-middle">Disabled</span> {% endif %}
-             </div>
-             <div>
-                 {% if session.get('is_2fa_enabled') %}
-                     <form method="POST" action="{{ url_for('disable_2fa') }}" class="d-inline">
-                          <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Disable 2FA? This reduces account security.');"><i class="bi bi-shield-slash"></i> Disable 2FA</button>
-                     </form>
-                 {% else %}
-                      <a href="{{ url_for('setup_2fa') }}" class="btn btn-primary btn-sm"><i class="bi bi-shield-lock"></i> Enable 2FA</a>
-                 {% endif %}
-             </div>
-         </div>
-     </div>
-
-    {# Search Form Card #}
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <form method="GET" action="{{ url_for('vault') }}">
-                 <label for="search_term" class="form-label">Search Entries</label>
-                 <div class="input-group">
-                    <input type="search" class="form-control" id="search_term" name="search_term" placeholder="Search Name (Laptop/Server)..." value="{{ search_term or '' }}" aria-label="Search Vault">
-                    <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Search</button>
-                     {% if search_term %}
-                        <a href="{{ url_for('vault') }}" class="btn btn-outline-danger" title="Clear Search"><i class="bi bi-x-lg"></i></a>
-                    {% endif %}
-                </div>
-            </form>
+    {# 2FA Status Section #}
+    <div class="alert {% if session.get('is_2fa_enabled') %}alert-success{% else %}alert-warning{% endif %} d-flex justify-content-between align-items-center" role="alert">
+        <div>
+            <strong>Two-Factor Authentication:</strong>
+            {% if session.get('is_2fa_enabled') %}
+                <span class="badge bg-success">Enabled</span>
+            {% else %}
+                 <span class="badge bg-danger">Disabled</span>
+            {% endif %}
+        </div>
+        <div>
+            {% if session.get('is_2fa_enabled') %}
+                <form method="POST" action="{{ url_for('disable_2fa') }}" class="d-inline">
+                     <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to disable 2FA? This reduces account security.');">Disable 2FA</button>
+                </form>
+            {% else %}
+                 <a href="{{ url_for('setup_2fa') }}" class="btn btn-primary btn-sm">Enable 2FA</a>
+            {% endif %}
         </div>
     </div>
 
-    {# Add New Entry Accordion #}
-     <div class="accordion mb-4 shadow-sm" id="addEntryAccordion">
+
+    {# Search Form #}
+    <div class="mb-4">
+        <form method="GET" action="{{ url_for('vault') }}">
+             <div class="input-group">
+                <input type="search" class="form-control" id="search_term" name="search_term" placeholder="Search Laptop/Server ID..." value="{{ search_term or '' }}" aria-label="Search Vault">
+                <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Search</button>
+                 {% if search_term %}
+                    <a href="{{ url_for('vault') }}" class="btn btn-outline-danger" title="Clear Search"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+
+    {# Add New Entry Section - Using Accordion for better layout #}
+     <div class="accordion mb-4" id="addEntryAccordion">
         <div class="accordion-item">
             <h2 class="accordion-header" id="headingOne">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                    <i class="bi bi-plus-circle-dotted me-2"></i> Add New Entry
+                    <i class="bi bi-plus-circle me-2"></i> Add New Entry
                 </button>
             </h2>
             <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#addEntryAccordion">
                 <div class="accordion-body">
                      <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="laptop_server" name="laptop_server" required placeholder="Name">
-                            <label for="laptop_server">Name (Laptop/Server):</label> {# <-- Updated Label #}
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="entry_username" name="entry_username" required placeholder="Username">
-                            <label for="entry_username">Username</label>
+                        <div class="mb-3">
+                            <label for="laptop_server" class="form-label">Laptop/Server ID:</label>
+                            <input type="text" class="form-control" id="laptop_server" name="laptop_server" required>
                         </div>
                         <div class="mb-3">
-                            <label for="entry_password" class="form-label">Password</label>
+                            <label for="entry_username" class="form-label">Username:</label>
+                            <input type="text" class="form-control" id="entry_username" name="entry_username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="entry_password" class="form-label">Password:</label>
                             <div class="input-group">
                                  <input type="password" class="form-control" id="entry_password" name="entry_password" required autocomplete="new-password">
                                  <button class="btn btn-outline-secondary" type="button" id="generate-btn" title="Generate Password"><i class="bi bi-stars"></i></button>
-                                 <button class="btn btn-outline-secondary" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye"></i></button> {# Text added by JS #}
+                                 <button class="btn btn-outline-secondary" type="button" id="show-hide-btn" data-target="entry_password" title="Show/Hide Password"><i class="bi bi-eye"></i> Show</button>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Add Entry</button>
@@ -74,16 +75,17 @@
         </div>
     </div>
 
+
     {# Stored Entries Table #}
-    <h2 class="mb-3">Stored Entries {% if search_term %}<span class="fs-6 fw-normal text-muted">(Filtered by "{{ search_term }}")</span>{% endif %}</h2>
-    <div class="table-responsive shadow-sm rounded">
+    <h2>Stored Entries {% if search_term %}<span class="fs-6 fw-normal text-muted">(Filtered by "{{ search_term }}")</span>{% endif %}</h2>
+    <div class="table-responsive"> {# Make table scroll horizontally on small screens #}
         {% if entries %}
-        <table class="table table-hover align-middle mb-0">
-            <thead class="thead-dark"> {# Dark header #}
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-light">
                 <tr>
-                    <th scope="col">Name (Laptop/Server)</th> {# <-- Updated Header #}
-                    <th scope="col">Username</th>
-                    <th scope="col" class="text-center">Actions</th>
+                    <th>Laptop/Server ID</th>
+                    <th>Username</th>
+                    <th class="text-center">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -95,8 +97,8 @@
                          <div class="btn-group" role="group" aria-label="Entry Actions">
                              <button type="button" class="btn btn-outline-secondary btn-sm show-stored-btn" data-id="{{ entry._id | string }}" title="Show Password"><i class="bi bi-eye"></i></button>
                              <button type="button" class="btn btn-outline-primary btn-sm copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard"></i></button>
-                             <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
-                                 <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete entry \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash"></i></button> {# <-- Updated Confirm #}
+                            <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete the entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash"></i></button>
                             </form>
                          </div>
                     </td>
@@ -105,9 +107,12 @@
             </tbody>
         </table>
         {% else %}
-            <div class="alert alert-secondary mt-3"> {# Secondary alert style #}
-                 {% if search_term %} No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
-                 {% else %} Your vault is empty. Use the "Add New Entry" section. {% endif %}
+            <div class="alert alert-info mt-3">
+                 {% if search_term %}
+                    No entries found matching your search criteria. <a href="{{ url_for('vault') }}">Clear Search</a>
+                 {% else %}
+                    Your vault is empty. Use the "Add New Entry" section above to add items.
+                 {% endif %}
              </div>
         {% endif %}
     </div> {# End table-responsive #}
@@ -116,26 +121,27 @@
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/vault.js') }}"></script>
-    {# JS to update show/hide button text AND icon #}
+    {# Optional: Add JS to change show/hide button icon #}
     <script>
         const showHidePassButton = document.getElementById('show-hide-btn');
         if(showHidePassButton) {
-            const icon = showHidePassButton.querySelector('i'); // Find icon inside button
-             // Set initial text/icon based on input type
-            const initialPasswordInput = document.getElementById(showHidePassButton.getAttribute('data-target'));
-            if(initialPasswordInput.type === 'password') { showHidePassButton.innerHTML = `<i class="bi bi-eye"></i> Show`; }
-            else { showHidePassButton.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`; }
-
             showHidePassButton.addEventListener('click', function() {
+                const icon = this.querySelector('i');
                 const targetId = this.getAttribute('data-target');
                 const passwordInput = document.getElementById(targetId);
                 if (passwordInput && icon) {
                     if (passwordInput.type === 'password') {
-                        passwordInput.type = 'text'; icon.classList.remove('bi-eye'); icon.classList.add('bi-eye-slash');
-                        this.title = 'Hide Password'; this.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`;
+                        // Changing to text
+                        icon.classList.remove('bi-eye');
+                        icon.classList.add('bi-eye-slash');
+                        this.title = 'Hide Password';
+                        this.innerHTML = `<i class="bi bi-eye-slash"></i> Hide`; // Update text too
                     } else {
-                        passwordInput.type = 'password'; icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye');
-                        this.title = 'Show Password'; this.innerHTML = `<i class="bi bi-eye"></i> Show`;
+                        // Changing to password
+                        icon.classList.remove('bi-eye-slash');
+                        icon.classList.add('bi-eye');
+                        this.title = 'Show Password';
+                         this.innerHTML = `<i class="bi bi-eye"></i> Show`; // Update text too
                     }
                 }
             });
