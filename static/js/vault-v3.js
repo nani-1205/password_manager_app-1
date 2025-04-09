@@ -1,7 +1,7 @@
 // static/js/vault-v3.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Quantum Vault V3 JS Loaded - Final Full Version");
+    console.log("Quantum Vault V3 JS Loaded - Final Version with Selector Fix");
 
     // --- API Fetch Helper ---
     async function fetchApi(url, options = {}) {
@@ -66,7 +66,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Generate Password Button (Add Form)
         if (generateBtnAdd && passwordFieldAdd) {
+            // console.log("Attaching listener to ADD form generate button"); // Debug
             generateBtnAdd.addEventListener('click', async function() {
+                // console.log("ADD form generate button clicked"); // Debug
                 const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
                 try {
                     const data = await fetchApi('/generate_password');
@@ -90,7 +92,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Cancel Button (Add Form)
         if (cancelBtnAdd) {
+             // console.log("Attaching listener to ADD form cancel button"); // Debug
              cancelBtnAdd.addEventListener('click', function() {
+                // console.log("Add form cancel button clicked"); // Debug
                 // Use variables defined in outer scope
                 if (addEntrySection) { addEntrySection.classList.add('hidden'); }
                 else { console.error("Cancel Error: Cannot find #add-entry-section to hide."); }
@@ -121,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const showHideEditModalBtn = document.getElementById('show-hide-modal-btn'); // ID within Modal
 
         // Listener for all edit buttons on cards to trigger modal population
-        document.querySelectorAll('.entry-card .edit-btn').forEach(button => {
+        document.querySelectorAll('.password-entry .edit-btn').forEach(button => { // Use .password-entry selector
             // console.log("Attaching listener to card edit button", button); // Debug
             button.addEventListener('click', async function(event) {
                 event.stopPropagation();
@@ -204,21 +208,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // --- Show/Hide Stored Password in Vault Cards ---
-    document.querySelectorAll('.entry-card .show-stored-btn').forEach(button => {
-         // console.log("Attaching listener to VAULT CARD show/hide button", button); // Debug
+    // --- CORRECTED SELECTOR to use .password-entry ---
+    document.querySelectorAll('.password-entry .show-stored-btn').forEach(button => {
+         console.log("Attaching listener to VAULT CARD show/hide button:", button); // DEBUG
          button.addEventListener('click', async function(event) {
-             event.stopPropagation();
-             // console.log("Vault card show/hide clicked!", this.getAttribute('data-id')); // Debug
+             event.stopPropagation(); // Prevent card click event if any
+             console.log("Vault card show/hide clicked!", this.getAttribute('data-id')); // DEBUG
 
+             // --- CORRECTED closest selector ---
              const card = this.closest('.password-entry');
              if (!card) { console.error("Show/Hide Error: Cannot find parent .password-entry"); return; }
 
              const entryId = this.getAttribute('data-id');
+             // Selectors within the card
              const dotsSpan = card.querySelector('.password-mask');
              const textSpan = card.querySelector('.password-revealed');
              const icon = this.querySelector('i');
 
-             // console.log("Found Elements:", { entryId, dotsSpan, textSpan, icon }); // Debug
+             console.log("Show/Hide Found Elements:", { entryId, dotsSpan, textSpan, icon }); // DEBUG
 
              if (!dotsSpan || !textSpan || !icon || !entryId) {
                  console.error("Show/Hide Error: Missing required elements", {dotsSpan, textSpan, icon, entryId});
@@ -226,18 +233,18 @@ document.addEventListener('DOMContentLoaded', function() {
              }
 
              if (textSpan.style.display !== 'none') { // --- HIDE ACTION ---
-                 // console.log("Hiding password"); // Debug
+                 console.log("Hiding password"); // DEBUG
                  textSpan.style.display = 'none'; textSpan.textContent = ''; // Clear password from HTML
-                 dotsSpan.style.display = 'inline-block';
+                 dotsSpan.style.display = 'inline-block'; // Or 'block' if needed
                  icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
              } else { // --- SHOW ACTION ---
                  if (!textSpan.textContent) { // Fetch only if needed
-                     // console.log("Fetching password to show..."); // Debug
+                     console.log("Fetching password to show..."); // DEBUG
                      const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
-                     let passwordToShow = ''; // Store fetched password
+                     let passwordToShow = '';
                      try {
                          const data = await fetchApi(`/get_password/${entryId}`);
-                         // console.log("API Response for show:", data); // Debug
+                         console.log("API Response for show:", data); // DEBUG
                          if (data.password !== undefined) passwordToShow = data.password || '(empty)';
                          else throw new Error(data.error || 'No password data');
                      }
@@ -252,44 +259,69 @@ document.addEventListener('DOMContentLoaded', function() {
                      textSpan.textContent = passwordToShow;
                      if (textSpan.textContent && textSpan.textContent !== '(empty)') {
                         if (this.querySelector('.spinner-border')) { this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; }
-                        icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
+                        const currentIcon = this.querySelector('i'); // Get current icon again
+                        if (currentIcon) currentIcon.className = 'bi bi-eye-slash-fill'; // Ensure correct icon
+                        this.title = 'Hide Password';
                      } else {
                         if (!this.querySelector('i')) { this.innerHTML = '<i class="bi bi-eye-fill"></i>'; }
-                         icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
-                         textSpan.textContent = ''; // Ensure it's empty if error/no password
+                         const currentIcon = this.querySelector('i');
+                         if (currentIcon) currentIcon.className = 'bi bi-eye-fill';
+                         this.title = 'Show Password';
+                         textSpan.textContent = ''; // Ensure empty if error
                      }
-                 } else { /* console.log("Password already available, just showing."); */ }
+                 } else { console.log("Password already available, just showing textSpan."); }
 
                  // Ensure correct display state after fetch or if already fetched
                  if (textSpan.textContent || textSpan.textContent === '') {
                     textSpan.style.display = 'inline-block'; dotsSpan.style.display = 'none';
-                    // Re-fetch icon reference in case innerHTML was changed by spinner
                     const currentIcon = this.querySelector('i');
-                    if (currentIcon) {
-                        currentIcon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
-                    } else { // Fallback if icon was lost somehow
-                         this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; this.title = 'Hide Password';
-                    }
+                    if (currentIcon){ currentIcon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password'; }
+                    else { this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; this.title = 'Hide Password'; }
                  }
              }
          });
     }); // End forEach show-stored-btn
 
+
     // --- Copy Stored Password from Vault Cards ---
-    document.querySelectorAll('.entry-card .copy-btn').forEach(button => {
-         // console.log("Attaching Copy listener to button:", button); // Debug
+    // --- CORRECTED SELECTOR to use .password-entry ---
+    document.querySelectorAll('.password-entry .copy-btn').forEach(button => {
+         console.log("Attaching Copy listener to button:", button); // DEBUG
          button.addEventListener('click', async function(event) {
-             event.stopPropagation(); if (!navigator.clipboard) { alert('Clipboard API not permitted.'); return; }
-             const entryId = this.getAttribute('data-id'); const icon = this.querySelector('i');
+             event.stopPropagation();
+             const entryId = this.getAttribute('data-id');
+             console.log("Copy clicked for ID:", entryId); // DEBUG
+
+             if (!navigator.clipboard) { alert('Clipboard API not permitted (HTTPS required?).'); return; }
+
+             const icon = this.querySelector('i');
              const originalIconClass = icon ? icon.className : 'bi bi-clipboard-fill';
              if (icon) icon.className = 'spinner-border spinner-border-sm text-primary'; this.disabled = true; this.title = 'Copying...';
-             try { const data = await fetchApi(`/get_password/${entryId}`);
-                 if (data.password === undefined) throw new Error(data.error || 'No password data');
+
+             try {
+                 console.log("Fetching password to copy..."); // DEBUG
+                 const data = await fetchApi(`/get_password/${entryId}`);
+                 console.log("API Response for copy:", data); // DEBUG
+
+                 if (data.password === undefined) { throw new Error(data.error || 'No password data received'); }
+
                  await navigator.clipboard.writeText(data.password);
+                 console.log("Password copied to clipboard."); // DEBUG
+
                  if (icon) icon.className = 'bi bi-check-lg text-success'; this.title = 'Copied!';
-                 setTimeout(() => { if (icon) icon.className = originalIconClass; this.disabled = false; this.title = 'Copy Password'; }, 1500);
-             } catch (error) { console.error("Copy error:", error); alert("Failed to copy: " + error.message); if (icon) icon.className = originalIconClass; this.disabled = false; this.title = 'Copy Password'; }
-         });
-    });
+
+                 setTimeout(() => { // Revert button state after delay
+                     if (icon) icon.className = originalIconClass;
+                     this.disabled = false;
+                     this.title = 'Copy Password';
+                     // console.log("Copy button state reverted."); // Debug
+                 }, 1500);
+
+             } catch (error) {
+                 console.error("Copy error:", error); alert("Failed to copy: " + error.message);
+                 if (icon) icon.className = originalIconClass; this.disabled = false; this.title = 'Copy Password';
+             }
+         }); // End event listener
+    }); // End forEach copy-btn
 
 }); // End DOMContentLoaded
