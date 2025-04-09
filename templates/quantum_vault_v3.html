@@ -1,0 +1,100 @@
+{% extends "logged_in_base_v3.html" %}
+
+{% block title %}Vault Dashboard{% endblock %}
+
+{% block content %}
+    <div class="content"> {# Main scrolling content area #}
+
+        {# Initially Hide Add Entry Section if toggled by sidebar #}
+        <div id="add-entry-section" class="add-entry-form-container hidden">
+             <h3><i class="bi bi-plus-circle me-2"></i>Add New Vault Entry</h3>
+             <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
+                <div class="form-group"> <label for="add_laptop_server" class="form-label">Laptop/Server ID:</label> <input type="text" class="form-input" id="add_laptop_server" name="laptop_server" required> </div>
+                <div class="form-group"> <label for="add_brand_label" class="form-label">Brand/Label <span class="text-muted">(Optional)</span>:</label> <input type="text" class="form-input" id="add_brand_label" name="brand_label"> </div>
+                <div class="form-group"> <label for="add_entry_username" class="form-label">Username:</label> <input type="text" class="form-input" id="add_entry_username" name="entry_username" required> </div>
+                <div class="form-group"> <label for="add_entry_password" class="form-label">Password:</label> <div class="input-group"> <input type="password" class="form-input" id="add_entry_password" name="entry_password" required autocomplete="new-password"> <button class="btn btn-outline" type="button" id="generate-add-btn" title="Generate Password"><i class="bi bi-stars"></i></button> <button class="btn btn-outline" type="button" id="show-hide-add-btn" data-target="add_entry_password" title="Show Password"><i class="bi bi-eye-fill"></i></button> </div> </div>
+                <div class="form-buttons"> <button type="button" class="btn btn-outline" id="cancel-add-entry"><i class="bi bi-x-lg"></i> Cancel</button> <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Save Entry</button> </div>
+            </form>
+        </div>
+
+        {# Stored Entries Section #}
+        <div class="section-header">
+             <div class="section-title">
+                 <i class="bi bi-key-fill me-2"></i> {# Icon for section #}
+                 Stored Entries
+                 {% if session.get('role') == 'admin' %}<span class="admin-badge ms-2">Admin View</span>{% endif %}
+                 {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary); margin-left: 10px;">(Filtered)</span>{% endif %}
+             </div>
+             {# Add Sorting / Filtering controls here later if needed #}
+        </div>
+
+        <div class="entry-list">
+            {% if entries %}
+                {% for entry in entries %}
+                <div class="password-entry">
+                    <div class="entry-icon {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}admin{% endif %}"> {# Admin icon if viewing others #}
+                        {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
+                    </div>
+                    <div class="entry-details">
+                        <div class="entry-title">
+                            {{ entry.laptop_server }}
+                            {% if entry.brand_label %}<span class="entry-brand-tag">{{ entry.brand_label }}</span>{% endif %}
+                            {# Optionally show indicator if admin is viewing someone else's entry #}
+                            {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}
+                                <i class="bi bi-person-badge text-warning ms-2" title="Entry belongs to another user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="entry-subtitle">
+                            <i class="bi bi-person me-1"></i> {{ entry.entry_username }}
+                            {# Optionally show owner if admin is viewing
+                            {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}
+                                <span class="ms-2 text-muted" style="font-size: 0.9em;">(Owner: {{ entry.owner_username_placeholder }})</span>
+                            {% endif %}
+                            #}
+                        </div>
+                         {# Password placeholder - reveal handled by JS #}
+                         <div class="entry-password-area">
+                            <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
+                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
+                            <button type="button" class="action-btn-icon-only show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password"><i class="bi bi-eye-fill"></i></button>
+                        </div>
+                    </div>
+                    <div class="entry-actions">
+                        <button type="button" class="action-btn-icon-only edit-btn" data-id="{{ entry._id | string }}" data-bs-toggle="modal" data-bs-target="#editEntryModal" title="Edit Entry"><i class="bi bi-pencil-fill"></i></button>
+                        <button type="button" class="action-btn-icon-only copy-btn" data-id="{{ entry._id | string }}" title="Copy Password"><i class="bi bi-clipboard-fill"></i></button>
+                        <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
+                             <button type="submit" class="action-btn-icon-only delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry"><i class="bi bi-trash-fill"></i></button>
+                         </form>
+                         {# Add more actions later if needed (e.g., share) #}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                 <div class="alert alert-info mt-3">
+                     {% if search_term %} No entries match search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
+                     {% else %} Vault is empty. Click "Add Entry" in sidebar. {% endif %}
+                 </div>
+            {% endif %}
+        </div> {# End entry-list #}
+
+        {# --- Edit Entry Modal (Included from Partial) --- #}
+        {% include 'partials/_add_edit_modal.html' with context %}
+
+    </div> {# End content #}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/vault-v3.js') }}"></script>
+    {# Inline script for Add Entry Cancel button #}
+    <script>
+        const cancelBtn = document.getElementById('cancel-add-entry');
+        const addSection = document.getElementById('add-entry-section');
+        const addSidebarBtn = document.getElementById('add-entry-sidebar-btn');
+        if (cancelBtn && addSection && addSidebarBtn) {
+            cancelBtn.addEventListener('click', function() {
+                addSection.classList.add('hidden'); addSidebarBtn.classList.remove('active');
+                const form = addSection.querySelector('form'); if(form) form.reset();
+            });
+        }
+    </script>
+{% endblock %}
