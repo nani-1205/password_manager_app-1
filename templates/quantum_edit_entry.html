@@ -1,0 +1,95 @@
+{% extends "logged_in_base_v2.html" %} {# Use the logged-in base #}
+
+{% block title %}Edit Entry{% endblock %}
+
+{% block main_content %}
+    <div class="content">
+        <div class="add-entry-form-container"> {# Re-use the same container style #}
+             <h3><i class="bi bi-pencil-square me-2"></i>Edit Vault Entry</h3>
+
+             {# Check if entry data exists (passed from GET route) #}
+             {% if entry %}
+                 <form method="POST" action="{{ url_for('update_entry', entry_id=entry._id) }}" id="edit-entry-form">
+                    <div class="form-group">
+                        <label for="laptop_server" class="form-label">Laptop/Server ID:</label>
+                        {# Pre-fill value #}
+                        <input type="text" class="form-input" id="laptop_server" name="laptop_server" value="{{ entry.laptop_server }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="brand_label" class="form-label">Brand/Label <span class="text-muted">(Optional)</span>:</label>
+                        {# Pre-fill value #}
+                        <input type="text" class="form-input" id="brand_label" name="brand_label" value="{{ entry.brand_label }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="entry_username" class="form-label">Username:</label>
+                        {# Pre-fill value #}
+                        <input type="text" class="form-input" id="entry_username" name="entry_username" value="{{ entry.entry_username }}" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="entry_password" class="form-label">Password:</label>
+                        <div class="input-group">
+                             {# Pre-fill value with decrypted password #}
+                             <input type="password" class="form-input" id="entry_password" name="entry_password" value="{{ entry.password }}" required autocomplete="new-password">
+                             {# Add Generate/Show buttons specific to this form #}
+                             <button class="btn btn-outline" type="button" id="generate-edit-btn" title="Generate New Password"><i class="bi bi-stars"></i></button>
+                             <button class="btn btn-outline" type="button" id="show-hide-edit-btn" data-target="entry_password" title="Show Password"><i class="bi bi-eye-fill"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-buttons">
+                         {# Cancel button links back to vault #}
+                         <a href="{{ url_for('vault') }}" class="btn btn-outline"><i class="bi bi-x-lg"></i> Cancel</a>
+                         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Update Entry</button>
+                    </div>
+                </form>
+            {% else %}
+                {# Display error if entry data wasn't loaded #}
+                <div class="alert alert-danger">Could not load entry data for editing.</div>
+                <a href="{{ url_for('vault') }}" class="btn btn-outline">Back to Vault</a>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {# Add specific JS for the Edit form's Generate/Show buttons if needed #}
+     <script src="{{ url_for('static', filename='js/vault-v2.js') }}"></script> {# Include base JS for API helper #}
+     <script>
+        // Show/Hide Button for Edit Form
+        const showHideEditBtn = document.getElementById('show-hide-edit-btn');
+        if (showHideEditBtn) {
+            showHideEditBtn.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const passwordInput = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+                if(passwordInput && icon) {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text'; icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
+                    } else {
+                        passwordInput.type = 'password'; icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
+                    }
+                }
+            });
+        }
+        // Generate Button for Edit Form
+        const generateEditBtn = document.getElementById('generate-edit-btn');
+        const passwordEditField = document.getElementById('entry_password'); // Assumes same ID as add form field
+        if (generateEditBtn && passwordEditField) {
+            generateEditBtn.addEventListener('click', async function() {
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                this.disabled = true;
+                try {
+                    const data = await fetchApi('/generate_password'); // Re-use API endpoint
+                    passwordEditField.value = data.password;
+                    // Ensure field type is text and show/hide button reflects state
+                    passwordEditField.type = 'text';
+                    if(showHideEditBtn) {
+                        const icon = showHideEditBtn.querySelector('i');
+                        if(icon) icon.className = 'bi bi-eye-slash-fill';
+                        showHideEditBtn.title = 'Hide Password';
+                    }
+                } catch (error) { alert('Error generating password: ' + error.message); }
+                finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; }
+            });
+        }
+     </script>
+{% endblock %}

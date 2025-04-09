@@ -1,10 +1,10 @@
 # web_app.py
 import os
 from flask import (Flask, render_template, request, redirect,
-                   url_for, session, flash, jsonify)
+                   url_for, session, flash, jsonify, abort) # Added abort
 from functools import wraps
 import config; import db; import encryption; import utils; import pyotp
-import traceback # For debugging errors
+import traceback
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
@@ -13,17 +13,23 @@ if not app.secret_key: raise ValueError("FLASK_SECRET_KEY not set")
 @app.teardown_appcontext
 def shutdown_session(exception=None): db.close_db()
 
-# --- Decorator ---
+# --- Decorator (Unchanged) ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session: flash('Please log in.', 'warning'); return redirect(url_for('login'))
         if session.get('2fa_required') and not session.get('2fa_passed'):
             if request.endpoint != 'login_2fa': flash('2FA required.', 'warning'); return redirect(url_for('login_2fa'))
+        # Check for encryption key here for routes that absolutely need it AFTER login
+        # Edit/Update/Delete/GetPassword/Add all need it
+        if 'encryption_key' not in session and request.endpoint not in ['login', 'signup', 'logout', 'login_2fa', 'index', 'setup_2fa', 'disable_2fa']:
+             flash('Session expired or invalid. Please log in again.', 'error')
+             session.clear()
+             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Standard Routes ---
+# --- Standard Routes (Index, Logout - Unchanged) ---
 @app.route('/')
 def index():
     if 'user_id' in session: return redirect(url_for('vault'))
@@ -31,7 +37,7 @@ def index():
 @app.route('/logout')
 def logout(): session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
 
-# --- Auth Routes ---
+# --- Auth Routes (Login, Login_2FA, Signup - Unchanged) ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session and not session.get('2fa_required'): return redirect(url_for('vault'))
@@ -94,17 +100,18 @@ def signup():
                 if user_id:
                     flash('Account created! Please log in.', 'success');
                     try: db.ensure_indexes()
-                    except Exception as idx_e: print(f"Warning: Could not ensure indexes after signup for user {username}: {idx_e}")
+                    except Exception as idx_e: print(f"Warning: Signup index error: {idx_e}")
                     return redirect(url_for('login'))
                 else: flash('Failed to create account.', 'error')
             except Exception as e: print(f"Signup Error: {e}"); traceback.print_exc(); flash(f'Signup error: {e}', 'error')
     return render_template('quantum_signup_v2.html')
 
-# --- 2FA Management ---
+# --- 2FA Management (Setup, Disable - Unchanged) ---
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 @login_required
 def setup_2fa():
     user_id = session['user_id']; username = session['username']
+    # ... (rest of setup_2fa logic) ...
     if request.method == 'POST':
         secret_key = request.form.get('secret_key'); totp_code = request.form.get('totp_code')
         if not secret_key or not totp_code: flash('Code and secret required.', 'error'); return redirect(url_for('setup_2fa'))
@@ -125,10 +132,10 @@ def setup_2fa():
     if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
     return render_template('quantum_setup_2fa_v2.html', secret_key=secret_key, qr_code_data=qr_code_data)
 
+
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
 def disable_2fa():
-    # SECURITY: Add password check here in production
     user_id = session['user_id']
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
@@ -159,6 +166,97 @@ def add_entry():
         except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
+# --- NEW: Edit Entry Route (GET) ---
+@app.route('/edit_entry/<entry_id>', methods=['GET'])
+@login_required
+def edit_entry(entry_id):
+    """Displays the form to edit an existing vault entry."""
+    user_id = session['user_id']
+    encryption_key = session.get('encryption_key')
+
+    # Fetch the specific entry and verify ownership
+    entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
+
+    if not entry_data:
+        flash('Entry not found or you do not have permission to edit it.', 'error')
+        return redirect(url_for('vault'))
+
+    # Decrypt the current password to pre-fill the form
+    decrypted_password = ""
+    if entry_data.get('encrypted_password'):
+        try:
+            decrypted_password = encryption.decrypt_data(entry_data['encrypted_password'], encryption_key)
+            if decrypted_password is None:
+                 flash('Error decrypting existing password. Cannot pre-fill.', 'warning')
+                 decrypted_password = "" # Leave field blank if decryption fails
+        except Exception as e:
+             print(f"Error decrypting password for edit (entry: {entry_id}): {e}")
+             flash('Error preparing entry for editing.', 'error')
+             return redirect(url_for('vault'))
+
+    # Prepare data for the template
+    # Don't pass the encrypted password to the template
+    edit_data = {
+        '_id': str(entry_data['_id']),
+        'laptop_server': entry_data.get('laptop_server', ''),
+        'brand_label': entry_data.get('brand_label', ''),
+        'entry_username': entry_data.get('entry_username', ''),
+        'password': decrypted_password # Pass the decrypted password
+    }
+
+    return render_template('quantum_edit_entry.html', entry=edit_data)
+
+# --- NEW: Update Entry Route (POST) ---
+@app.route('/update_entry/<entry_id>', methods=['POST'])
+@login_required
+def update_entry(entry_id):
+    """Handles the submission of the edited vault entry."""
+    user_id = session['user_id']
+    encryption_key = session.get('encryption_key')
+
+    # Get updated data from the form
+    new_laptop_server = request.form.get('laptop_server')
+    new_brand_label = request.form.get('brand_label')
+    new_entry_username = request.form.get('entry_username')
+    new_password = request.form.get('password') # New PLAIN TEXT password from form
+
+    # Validation
+    if not new_laptop_server or not new_entry_username or not new_password:
+         flash('Laptop/Server ID, Username, and Password are required.', 'error')
+         # Redirect back to edit page, need to pass data again or handle differently
+         # For simplicity, redirecting to vault for now on validation error
+         return redirect(url_for('edit_entry', entry_id=entry_id))
+
+    # SECURITY: Re-verify ownership before updating
+    if not db.find_entry_by_id_and_user(entry_id, user_id):
+         flash('Permission denied or entry not found.', 'error')
+         return redirect(url_for('vault'))
+
+    # Encrypt the new password
+    try:
+        new_encrypted_password = encryption.encrypt_data(new_password, encryption_key)
+    except Exception as e:
+        flash(f'Error encrypting new password: {e}', 'error')
+        # Redirect back to edit page
+        return redirect(url_for('edit_entry', entry_id=entry_id))
+
+    # Update the entry in the database
+    success = db.update_vault_entry(
+        entry_id,
+        new_laptop_server,
+        new_brand_label,
+        new_entry_username,
+        new_encrypted_password
+    )
+
+    if success:
+        flash('Entry updated successfully!', 'success')
+    else:
+        flash('Failed to update entry in database.', 'error')
+
+    return redirect(url_for('vault')) # Redirect to vault after update attempt
+
+
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
@@ -166,23 +264,18 @@ def delete_entry(entry_id):
      if entry_data:
          try:
              success = db.delete_vault_entry(entry_id)
-             if success:
-                 flash('Entry deleted.', 'success')
-             else:
-                 flash('Failed to delete entry from database.', 'error') # Corrected flash message
-         except Exception as e:
-             flash(f'Error occurred during deletion: {e}', 'error')
-     else:
-         flash('Cannot delete entry (not found or permission denied).', 'error')
+             if success: flash('Entry deleted.', 'success')
+             else: flash('Failed to delete entry from database.', 'error')
+         except Exception as e: flash(f'Error occurred during deletion: {e}', 'error')
+     else: flash('Cannot delete entry (not found or permission denied).', 'error')
      return redirect(url_for('vault'))
 
-# --- APIs ---
+# --- APIs (Unchanged) ---
 @app.route('/generate_password')
 @login_required
 def generate_password_api():
     try: return jsonify({'password': utils.generate_password(16)})
     except Exception as e: print(f"Gen pass error: {e}"); return jsonify({'error': 'Failed'}), 500
-
 @app.route('/get_password/<entry_id>')
 @login_required
 def get_password_api(entry_id):
@@ -200,15 +293,12 @@ def get_password_api(entry_id):
         else: return jsonify({'error': 'Not found/denied'}), 404
     except Exception as e: print(f"Get pass error for entry '{entry_id}': {e}"); return jsonify({'error': 'Internal error'}), 500
 
-# --- Main Execution ---
+# --- Main Execution (Unchanged) ---
 if __name__ == '__main__':
     try:
         print("Attempting initial database connection check...")
         db_conn_check = db.connect_db()
-        if db_conn_check is not None: # Corrected check
-            print("Initial connection successful. Checking indexes...")
-            db.ensure_indexes(); db.close_db()
-            print("Database connection checked and indexes ensured.")
+        if db_conn_check is not None: print("Initial connection successful. Checking indexes..."); db.ensure_indexes(); db.close_db(); print("Database connection checked and indexes ensured.")
         else: raise ConnectionError("DB check returned None.")
     except Exception as e: print(f"\nCRITICAL: DB setup failed: {e}\n"); import sys; sys.exit(1)
     print("Starting Flask dev server (Debug Mode)..."); app.run(host='0.0.0.0', port=5000, debug=True)
