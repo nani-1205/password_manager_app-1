@@ -126,8 +126,7 @@ def setup_2fa():
                 flash('2FA enabled successfully!', 'success'); session['is_2fa_enabled'] = True; return redirect(url_for('vault'))
             else: flash('Failed to save 2FA settings.', 'error'); return redirect(url_for('setup_2fa'))
         else:
-            flash('Invalid verification code.', 'error')
-            provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
+            flash('Invalid verification code.', 'error'); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
             return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
@@ -212,14 +211,14 @@ def add_entry():
             encrypted_password = encryption.encrypt_data(password, encryption_key)
             entry_id = db.add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password)
             if entry_id:
-                flash('Entry added successfully!', 'success')
+                flash('Entry added!', 'success')
             else:
-                flash('Failed to add entry to database.', 'error')
+                flash('Failed to add entry.', 'error')
         except Exception as e:
             flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-# Edit route removed (now handled by API + modal)
+# Edit route removed (using modal)
 
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
@@ -236,8 +235,8 @@ def update_entry(entry_id):
         except Exception as e: flash(f'Error encrypting: {e}', 'error'); return redirect(url_for('vault'))
     else: new_encrypted_password = original_entry_data.get('encrypted_password', b'') # Keep existing
     success = db.update_vault_entry(entry_id, new_laptop_server, new_brand_label, new_entry_username, new_encrypted_password)
-    if success: flash('Entry updated successfully!', 'success')
-    else: flash('Failed to update entry (or no changes made).', 'warning')
+    if success: flash('Entry updated!', 'success')
+    else: flash('Failed update (or no changes).', 'warning')
     return redirect(url_for('vault'))
 
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
@@ -254,7 +253,7 @@ def delete_entry(entry_id):
          try:
              success = db.delete_vault_entry(entry_id);
              if success:
-                 flash('Entry deleted successfully.', 'success')
+                 flash('Entry deleted.', 'success')
              else:
                  flash('Failed to delete entry from database.', 'error')
          except Exception as e:
