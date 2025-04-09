@@ -1,7 +1,7 @@
 // static/js/vault-v3.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Quantum Vault V3 JS Loaded - Final Check with All Logic");
+    console.log("Quantum Vault V3 JS Loaded - Final Version");
 
     // --- API Fetch Helper ---
     async function fetchApi(url, options = {}) {
@@ -22,8 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error(`API Fetch Error (${url}):`, error);
             // Optionally show a user-friendly message via alert or a dedicated UI element
-            // alert(`API Error: ${error.message}`); // Simple alert for now
-            throw error; // Re-throw for specific handling in calling function
+            // For now, re-throw to be handled by the caller
+            throw error;
         }
     }
 
@@ -33,36 +33,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (addEntrySidebarBtn && addEntrySection) {
         addEntrySidebarBtn.addEventListener('click', function(event) {
-            event.preventDefault(); // Prevent default anchor tag behavior
-            console.log("Sidebar Add Entry Clicked!"); // Debug
+            event.preventDefault();
+            // console.log("Sidebar Add Entry Clicked!"); // Uncomment for debugging if needed
 
             const isHidden = addEntrySection.classList.contains('hidden');
             if (isHidden) {
                 addEntrySection.classList.remove('hidden');
-                this.classList.add('active'); // Highlight sidebar item
-                 setTimeout(() => { // Delay scroll slightly
-                    const section = document.getElementById('add-entry-section'); // Re-check element
+                this.classList.add('active');
+                 setTimeout(() => {
+                    const section = document.getElementById('add-entry-section');
                     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
                  }, 50);
             } else {
                 addEntrySection.classList.add('hidden');
-                this.classList.remove('active'); // Remove highlight
-                 const form = addEntrySection.querySelector('form'); if(form) form.reset(); // Reset form
+                this.classList.remove('active');
+                 const form = addEntrySection.querySelector('form'); if(form) form.reset();
             }
         });
         // console.log("Sidebar Add Entry listener attached."); // Debug
     } else {
-        if (!addEntrySidebarBtn) console.error("JS Error: Sidebar button #add-entry-sidebar-btn not found.");
-        if (!addEntrySection) console.error("JS Error: Add entry section #add-entry-section not found.");
+        if (!addEntrySidebarBtn) console.error("JS Setup Error: Sidebar button #add-entry-sidebar-btn not found.");
+        if (!addEntrySection) console.error("JS Setup Error: Add entry section #add-entry-section not found.");
     }
 
     // --- Add Entry Form Interactions ---
     const addEntryForm = document.getElementById('add-entry-form');
     if (addEntryForm) {
-        const generateBtnAdd = addEntryForm.querySelector('#generate-add-btn');
-        const passwordFieldAdd = addEntryForm.querySelector('#add_entry_password'); // Use specific ID
-        const showHideBtnAdd = addEntryForm.querySelector('#show-hide-add-btn'); // Use specific ID
-        const cancelBtnAdd = addEntryForm.querySelector('#cancel-add-entry');
+        const generateBtnAdd = addEntryForm.querySelector('#generate-add-btn'); // Button specific to Add Form
+        const passwordFieldAdd = addEntryForm.querySelector('#add_entry_password'); // Input specific to Add Form
+        const showHideBtnAdd = addEntryForm.querySelector('#show-hide-add-btn'); // Button specific to Add Form
+        const cancelBtnAdd = addEntryForm.querySelector('#cancel-add-entry'); // Button specific to Add Form
 
         // Generate Password Button (Add Form)
         if (generateBtnAdd && passwordFieldAdd) {
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch (error) { alert('Error generating password: ' + error.message); }
                 finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; }
             });
-        } else { if (!generateBtnAdd) console.error("JS Error: #generate-add-btn not found in Add Form"); if (!passwordFieldAdd) console.error("JS Error: #add_entry_password not found in Add Form"); }
+        } else { if (!generateBtnAdd) console.error("JS Setup Error: #generate-add-btn not found in Add Form"); if (!passwordFieldAdd) console.error("JS Setup Error: #add_entry_password not found in Add Form"); }
 
         // Show/Hide Password Button (Add Form)
         if (showHideBtnAdd && passwordFieldAdd) {
@@ -88,48 +88,51 @@ document.addEventListener('DOMContentLoaded', function() {
                  if (passwordFieldAdd.type === 'password') { passwordFieldAdd.type = 'text'; icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password'; }
                  else { passwordFieldAdd.type = 'password'; icon.className = 'bi bi-eye-fill'; this.title = 'Show Password'; }
             });
-         }
+         } else { if (!showHideBtnAdd) console.error("JS Setup Error: #show-hide-add-btn not found in Add Form"); }
 
         // Cancel Button (Add Form)
         if (cancelBtnAdd) {
              // console.log("Attaching listener to ADD form cancel button"); // Debug
              cancelBtnAdd.addEventListener('click', function() {
                 // console.log("Add form cancel button clicked"); // Debug
-                // Use variables defined in outer scope
+                // Use variables defined in the higher scope
                 if (addEntrySection) { addEntrySection.classList.add('hidden'); }
                 else { console.error("Cancel Error: Cannot find #add-entry-section to hide."); }
                 if (addEntrySidebarBtn) { addEntrySidebarBtn.classList.remove('active'); }
                 else { console.error("Cancel Error: Cannot find #add-entry-sidebar-btn to deactivate."); }
                 const form = addEntryForm; if(form) form.reset();
             });
-        } else { console.error("JS Error: Add form Cancel button #cancel-add-entry not found"); }
+        } else { console.error("JS Setup Error: Add form Cancel button #cancel-add-entry not found"); }
 
-    } else { console.error("JS Error: Add Entry Form #add-entry-form not found"); }
+    } else { console.error("JS Setup Error: Add Entry Form #add-entry-form not found"); }
 
 
     // --- Edit Entry Modal & its Buttons ---
     const editEntryModalElement = document.getElementById('entryModal'); // Shared Modal ID from partial
     let editEntryModalInstance = null;
     if (editEntryModalElement) {
-        editEntryModalInstance = new bootstrap.Modal(editEntryModalElement);
+        editEntryModalInstance = new bootstrap.Modal(editEntryModalElement); // Initialize BS Modal
         const editForm = document.getElementById('entry-modal-form');
         const editEntryIdInput = document.getElementById('modal_entry_id');
         const editLaptopServerInput = document.getElementById('modal_laptop_server');
         const editBrandLabelInput = document.getElementById('modal_brand_label');
         const editUsernameInput = document.getElementById('modal_entry_username');
-        const editPasswordInput = document.getElementById('modal_entry_password'); // Correct ID
+        const editPasswordInput = document.getElementById('modal_entry_password'); // ID within Modal
         const editModalTitle = document.getElementById('entryModalLabel');
         const editModalSubmitBtn = document.getElementById('modal_submit_button');
         const editModalHelpText = document.getElementById('modalPasswordHelp');
-        const generateEditModalBtn = document.getElementById('generate-modal-btn'); // Correct ID
-        const showHideEditModalBtn = document.getElementById('show-hide-modal-btn'); // Correct ID
+        const generateEditModalBtn = document.getElementById('generate-modal-btn'); // ID within Modal
+        const showHideEditModalBtn = document.getElementById('show-hide-modal-btn'); // ID within Modal
 
         // Listener for all edit buttons on cards to trigger modal population
         document.querySelectorAll('.entry-card .edit-btn').forEach(button => {
+            // console.log("Attaching listener to card edit button", button); // Debug
             button.addEventListener('click', async function(event) {
                 event.stopPropagation();
-                const entryId = this.getAttribute('data-id'); if (!entryId) return;
+                const entryId = this.getAttribute('data-id'); if (!entryId) { console.error("Edit button missing data-id"); return; }
+                console.log("Edit button clicked for ID:", entryId); // Debug
 
+                // Prepare Modal for Editing state
                 editForm.reset(); editModalTitle.textContent = 'Loading Entry...';
                 editModalSubmitBtn.textContent = 'Update Entry'; editModalSubmitBtn.className = 'btn btn-primary';
                 editPasswordInput.required = false; editEntryIdInput.value = entryId;
@@ -137,21 +140,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(editModalHelpText) editModalHelpText.style.display = 'block';
 
                 try {
-                    const data = await fetchApi(`/get_entry_details/${entryId}`);
-                    editLaptopServerInput.value = data.laptop_server || '';
-                    editBrandLabelInput.value = data.brand_label || '';
-                    editUsernameInput.value = data.entry_username || '';
-                    editPasswordInput.value = data.password || '';
-                    editPasswordInput.placeholder = "Leave blank to keep current password";
-                    editPasswordInput.type = 'password';
+                    console.log("Fetching details for edit modal:", entryId); // Debug
+                    const data = await fetchApi(`/get_entry_details/${entryId}`); // Fetch ALL details
+                    console.log("Fetched edit details:", data); // Debug
+
+                    // Populate form fields
+                    if (editLaptopServerInput) editLaptopServerInput.value = data.laptop_server || '';
+                    if (editBrandLabelInput) editBrandLabelInput.value = data.brand_label || '';
+                    if (editUsernameInput) editUsernameInput.value = data.entry_username || '';
+                    if (editPasswordInput) {
+                        editPasswordInput.value = data.password || ''; // Pre-fill DECRYPTED password
+                        editPasswordInput.placeholder = "Leave blank to keep current password";
+                        editPasswordInput.type = 'password'; // Ensure it starts hidden
+                    }
+                    // Reset show/hide button state
                     if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-fill'; showHideEditModalBtn.title = 'Show Password';}
-                    editModalTitle.textContent = `Edit: ${data.laptop_server || 'Entry'}`;
-                    // Modal is shown via data-bs-toggle, no need for JS show()
+
+                    if(editModalTitle) editModalTitle.textContent = `Edit: ${data.laptop_server || 'Entry'}`;
+                    // Modal is shown via data-bs-toggle="modal" attribute on the button
 
                 } catch (error) {
+                    console.error("Error fetching entry for edit:", error);
                     alert(`Failed to load entry details: ${error.message}`);
-                    editModalTitle.textContent = 'Edit Vault Entry';
-                    if(editEntryModalInstance) editEntryModalInstance.hide();
+                    editModalTitle.textContent = 'Edit Vault Entry'; // Reset title on error
+                    if(editEntryModalInstance) editEntryModalInstance.hide(); // Hide if fetch fails
                 }
             });
         });
@@ -159,8 +171,11 @@ document.addEventListener('DOMContentLoaded', function() {
          // Reset modal state when hidden
          editEntryModalElement.addEventListener('hidden.bs.modal', function (event) {
              editForm.reset(); editModalTitle.textContent = 'Edit Vault Entry';
-             editPasswordInput.required = false; editForm.action = '#';
+             editPasswordInput.required = false; editForm.action = '#'; // Clear action
              if(editModalHelpText) editModalHelpText.style.display = 'none';
+             // Reset show/hide button in modal
+             if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-fill'; showHideEditModalBtn.title = 'Show Password';}
+             if(editPasswordInput) editPasswordInput.type = 'password';
          });
 
          // Generate Button inside Edit Modal
@@ -171,14 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
                  const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
                  try {
                      const data = await fetchApi('/generate_password');
-                     if (data.password) { // Check response
+                     if (data.password) {
                         editPasswordInput.value = data.password; editPasswordInput.type = 'text';
                         if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-slash-fill'; showHideEditModalBtn.title = 'Hide Password'; }
                      } else { throw new Error(data.error || 'API did not return password'); }
                  } catch (error) { alert('Error generating password: ' + error.message); }
-                 finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; } // Restore icon
+                 finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; }
              });
-         } else { if (!generateEditModalBtn) console.error("JS Error: #generate-modal-btn not found"); if (!editPasswordInput) console.error("JS Error: #modal_entry_password not found"); }
+         } else { if (!generateEditModalBtn) console.error("JS Error: Edit Modal #generate-modal-btn not found"); if (!editPasswordInput) console.error("JS Error: Edit Modal #modal_entry_password not found"); }
 
          // Show/Hide Button inside Edit Modal
          if (showHideEditModalBtn && editPasswordInput) {
@@ -187,9 +202,9 @@ document.addEventListener('DOMContentLoaded', function() {
                  if (editPasswordInput.type === 'password') { editPasswordInput.type = 'text'; icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password'; }
                  else { editPasswordInput.type = 'password'; icon.className = 'bi bi-eye-fill'; this.title = 'Show Password'; }
              });
-         } else { if (!showHideEditModalBtn) console.error("JS Error: #show-hide-modal-btn not found"); }
+         } else { if (!showHideEditModalBtn) console.error("JS Error: Edit Modal #show-hide-modal-btn not found"); }
 
-    } // End if(editEntryModalElement)
+    } else { console.error("JS Setup Error: Edit Modal #entryModal not found."); }
 
 
     // --- Show/Hide Stored Password in Vault Cards ---
@@ -199,47 +214,59 @@ document.addEventListener('DOMContentLoaded', function() {
              event.stopPropagation();
              // console.log("Vault card show/hide clicked!", this.getAttribute('data-id')); // Debug
 
-             const card = this.closest('.entry-card'); if (!card) { console.error("Cannot find parent .entry-card"); return; }
+             const card = this.closest('.password-entry'); // Use the correct class
+             if (!card) { console.error("Show/Hide Error: Cannot find parent .password-entry"); return; }
+
              const entryId = this.getAttribute('data-id');
              const dotsSpan = card.querySelector('.password-mask');
              const textSpan = card.querySelector('.password-revealed');
              const icon = this.querySelector('i');
-             // console.log("Found Elements:", { entryId, dotsSpan, textSpan, icon }); // Debug
-             if (!dotsSpan || !textSpan || !icon || !entryId) { console.error("Missing elements for show/hide", {dotsSpan, textSpan, icon, entryId}); return; }
 
-             if (textSpan.style.display !== 'none') { // --- HIDE ---
+             // console.log("Found Elements:", { entryId, dotsSpan, textSpan, icon }); // Debug
+
+             if (!dotsSpan || !textSpan || !icon || !entryId) {
+                 console.error("Show/Hide Error: Missing required elements", {dotsSpan, textSpan, icon, entryId});
+                 return;
+             }
+
+             if (textSpan.style.display !== 'none') { // --- HIDE ACTION ---
                  // console.log("Hiding password"); // Debug
                  textSpan.style.display = 'none'; textSpan.textContent = ''; // Clear password
                  dotsSpan.style.display = 'inline-block';
                  icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
-             } else { // --- SHOW ---
+             } else { // --- SHOW ACTION ---
                  if (!textSpan.textContent) { // Fetch only if needed
                      // console.log("Fetching password to show..."); // Debug
-                     const originalHtml = this.innerHTML; // Store original icon HTML
-                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
+                     const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
+                     let passwordToShow = ''; // Store fetched password
                      try {
                          const data = await fetchApi(`/get_password/${entryId}`);
                          // console.log("API Response for show:", data); // Debug
-                         if (data.password !== undefined) textSpan.textContent = data.password || '(empty)';
+                         if (data.password !== undefined) passwordToShow = data.password || '(empty)';
                          else throw new Error(data.error || 'No password data');
                      } catch (error) {
                          console.error("Error fetching password for show:", error);
                          alert('Error: ' + error.message);
-                         this.innerHTML = '<i class="bi bi-eye-fill"></i>'; // Restore icon on error
-                         this.disabled = false; return; // Stop
+                         this.innerHTML = '<i class="bi bi-eye-fill"></i>'; this.disabled = false; return;
                      } finally { this.disabled = false; }
-                 } else { /* console.log("Password already fetched, just showing."); */ } // Already fetched
 
-                 // Update display and icon state *after* potential fetch/error handling
-                 if (textSpan.textContent || textSpan.textContent === '') { // Check if content was set (even if empty string)
+                     // Update UI only after potential fetch completes
+                     textSpan.textContent = passwordToShow;
+                     if (textSpan.textContent && textSpan.textContent !== '(empty)') {
+                        if (this.querySelector('.spinner-border')) { this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; } // Restore icon
+                        icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
+                     } else { // Handle empty password or error during fetch
+                        if (!this.querySelector('i')) { this.innerHTML = '<i class="bi bi-eye-fill"></i>'; } // Restore icon
+                         icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
+                         textSpan.textContent = ''; // Ensure it's empty if there was an error or no password
+                     }
+                 } else { /* console.log("Password already fetched, just showing."); */ }
+
+                 // Ensure correct display state after fetch or if already fetched
+                 if (textSpan.textContent || textSpan.textContent === '') { // Check if text content is set
                     textSpan.style.display = 'inline-block'; dotsSpan.style.display = 'none';
                     icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
-                    if (!this.querySelector('i')) this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; // Restore icon if spinner was used
-                 } else {
-                     // If fetch failed and textSpan is still empty, reset to hidden state
-                     textSpan.style.display = 'none'; dotsSpan.style.display = 'inline-block';
-                     icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
-                     if (!this.querySelector('i')) this.innerHTML = '<i class="bi bi-eye-fill"></i>';
+                    if (!this.querySelector('i')) { this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; } // Restore icon just in case
                  }
              }
          });
