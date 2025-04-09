@@ -13,100 +13,53 @@
             <div class="logo">QV</div>
             <div class="logo-text">Quantum Vault</div>
         </div>
-
         <div class="sidebar-menu">
-            {# Dashboard Link #}
             <a href="{{ url_for('vault') }}" class="menu-item {% if request.endpoint == 'vault' %}active{% endif %}">
-                 <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
-                <span class="menu-text">Dashboard</span>
+                 <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div><span class="menu-text">Dashboard</span>
             </a>
-            {# Add Entry Toggle Link #}
-            <a href="#" class="menu-item" id="add-entry-sidebar-btn"> {# Correct ID #}
-                 <div class="icon"><i class="bi bi-plus-circle-fill"></i></div>
-                <span class="menu-text">Add Entry</span>
+            {# --- Ensure correct ID for Add Entry Link --- #}
+            <a href="#" class="menu-item" id="add-entry-sidebar-btn">
+                 <div class="icon"><i class="bi bi-plus-circle-fill"></i></div><span class="menu-text">Add Entry</span>
             </a>
-             {# 2FA Management Link #}
-             {# Assumes 'is_2fa_enabled' is passed to this template via render_template #}
-             {% if is_2fa_enabled %}
+            {# --- END Ensure ID --- #}
+            {% if is_2fa_enabled %}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
-                     <div class="icon"><i class="bi bi-shield-slash-fill text-warning"></i></div>
-                    <span class="menu-text">Disable 2FA</span>
+                     <div class="icon"><i class="bi bi-shield-slash-fill text-warning"></i></div><span class="menu-text">Disable 2FA</span>
                  </a>
                  <form id="disable-2fa-form" method="POST" action="{{ url_for('disable_2fa') }}" style="display: none;"></form>
-             {% else %}
+            {% else %}
                   <a href="{{ url_for('setup_2fa') }}" class="menu-item {% if request.endpoint == 'setup_2fa' %}active{% endif %}" title="Enable 2FA">
-                     <div class="icon"><i class="bi bi-shield-lock-fill text-success"></i></div>
-                    <span class="menu-text">Enable 2FA</span>
-                </a>
-             {% endif %}
-
-             {# Admin Link #}
-             {% if session.get('role') == 'admin' %}
+                     <div class="icon"><i class="bi bi-shield-lock-fill text-success"></i></div><span class="menu-text">Enable 2FA</span>
+                  </a>
+            {% endif %}
+            {% if session.get('role') == 'admin' %}
                  <hr style="border-color: var(--border); margin: 10px 0;">
                  <a href="{{ url_for('admin_users') }}" class="menu-item admin {% if request.endpoint.startswith('admin_') %}active{% endif %}">
-                     <div class="icon"><i class="bi bi-people-fill"></i></div>
-                    <span class="menu-text">Manage Users</span>
-                </a>
+                     <div class="icon"><i class="bi bi-people-fill"></i></div><span class="menu-text">Manage Users</span>
+                 </a>
              {% endif %}
-             {# Settings Link Placeholder #}
-             {# <a href="#" class="menu-item"><div class="icon"><i class="bi bi-gear-fill"></i></div><span class="menu-text">Settings</span></a> #}
         </div>
-
         <div class="user-profile">
             <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
-            <div class="user-info">
-                <div class="user-name">{{ current_username }}</div>
-            </div>
-             <a href="{{ url_for('logout') }}" class="action-btn-icon-only" title="Logout">
-                 <i class="bi bi-box-arrow-right"></i>
-             </a>
+            <div class="user-info"><div class="user-name">{{ current_username }}</div></div>
+            <a href="{{ url_for('logout') }}" class="action-btn-icon-only" title="Logout"><i class="bi bi-box-arrow-right"></i></a>
         </div>
     </div>
-
     <div class="main-content-wrapper">
-        <div class="header"> {# Header only contains search #}
+        <div class="header">
              <form method="GET" action="{{ url_for('vault') }}" class="search-form">
-                <div class="search-container">
-                    <div class="search-icon"><i class="bi bi-search"></i></div>
-                     <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
-                </div>
-                {% if search_term %}
-                    <a href="{{ url_for('vault') }}" class="btn btn-outline btn-icon" title="Clear Search"> <i class="bi bi-x-lg"></i> </a>
-                {% else %}
-                    <button type="submit" class="btn btn-primary btn-icon btn-search" title="Search"> <i class="bi bi-search"></i> </button>
-                {% endif %}
+                <div class="search-container"> <div class="search-icon"><i class="bi bi-search"></i></div> <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}"> </div>
+                {% if search_term %}<a href="{{ url_for('vault') }}" class="btn btn-outline btn-icon" title="Clear Search"><i class="bi bi-x-lg"></i></a>{% else %}<button type="submit" class="btn btn-primary btn-icon btn-search" title="Search"><i class="bi bi-search"></i></button>{% endif %}
             </form>
-             {# Header Actions Div (Empty but kept for structure) #}
-             <div class="header-actions"></div>
+            <div class="header-actions"></div>{# Add button removed #}
         </div>
-
-         {# Flash Messages Container #}
-         <div class="container-fluid px-4 pt-3" id="flash-message-container">
-             {% with messages = get_flashed_messages(with_categories=true) %}
-                 {% if messages %}
-                     {% for category, message in messages %}
-                         {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
-                         <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                             {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
-                             {{ message }}
-                             <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
-                         </div>
-                     {% endfor %}
-                 {% endif %}
-             {% endwith %}
+        <div class="container-fluid px-4 pt-3" id="flash-message-container">
+             {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %} {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %} <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert"> {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %} {{ message }} <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button> </div> {% endfor %} {% endif %} {% endwith %}
          </div>
-
-        {# Main Content Block #}
         {% block main_content %}{% endblock %}
-
-    </div> {# End main-content-wrapper #}
-
-    <div class="fixed-logo">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
     </div>
-
-     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-     {% block scripts %}{% endblock %}
-
+    <div class="fixed-logo"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>
