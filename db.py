@@ -34,7 +34,7 @@ def ensure_indexes():
             print("Database indexes ensured.")
     except Exception as e: print(f"Warning: Error creating indexes: {e}")
 
-# --- User Ops ---
+# --- User ---
 def find_user(username):
     try: db_conn = get_db(); return db_conn[config.USERS_COLLECTION].find_one({"username": username},{"_id": 1, "username": 1, "password_hash": 1, "salt": 1, "totp_secret": 1, "is_2fa_enabled": 1, "role": 1, "is_active": 1})
     except Exception as e: print(f"Error finding user '{username}': {e}"); return None
@@ -68,7 +68,7 @@ def delete_user_by_id(user_id):
     try: db_conn = get_db(); user_obj_id = ObjectId(user_id); delete_result = db_conn[config.VAULT_COLLECTION].delete_many({"user_id": user_obj_id}); print(f"Deleted {delete_result.deleted_count} vault entries for user {user_id}"); result = db_conn[config.USERS_COLLECTION].delete_one({"_id": user_obj_id}); return result.deleted_count > 0
     except Exception as e: print(f"Error deleting user '{user_id}': {e}"); return False
 
-# --- Vault Ops ---
+# --- Vault ---
 def add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password):
     try: db_conn = get_db(); entry_user_id = ObjectId(user_id) if isinstance(user_id, str) else user_id; entry_data = {"user_id": entry_user_id, "laptop_server": laptop_server, "brand_label": brand_label, "entry_username": entry_username, "encrypted_password": encrypted_password}; result = db_conn[config.VAULT_COLLECTION].insert_one(entry_data); return result.inserted_id
     except Exception as e: print(f"Error adding vault entry user '{user_id}': {e}"); return None
