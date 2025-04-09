@@ -1,12 +1,12 @@
-{% extends "logged_in_base_v3.html" %}
+{% extends "logged_in_base_v3.html" %} {# <-- Use the correct logged-in base template #}
 
 {% block title %}Vault Dashboard{% endblock %}
 
-{% block main_content %}
-    <div class="content">
+{% block main_content %} {# Content goes into the main_content block defined in logged_in_base_v3.html #}
+    <div class="content"> {# This div provides padding and scroll defined in quantum-v3.css #}
 
         {# --- Add Entry Form Section (Initially Hidden) --- #}
-        <div id="add-entry-section" class="add-entry-form-container hidden">
+        <div id="add-entry-section" class="add-entry-form-container hidden"> {# Use hidden class, toggled by sidebar JS #}
              <h3><i class="bi bi-plus-circle me-2"></i>Add New Vault Entry</h3>
              <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
                 <div class="form-group"> <label for="add_laptop_server" class="form-label">Laptop/Server ID:</label> <input type="text" class="form-input" id="add_laptop_server" name="laptop_server" required> </div>
@@ -24,29 +24,31 @@
             Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}
         </h2>
 
-        {# Grid Container for Vault Entries #}
-        <div class="entries-grid">
-            {% if entries %}
-                {% for entry in entries %}
-                <div class="password-entry"> {# Entry Card #}
+        {# Grid/List Container for Vault Entries #}
+        {# Use entries-grid for card layout or entry-list for list layout based on CSS #}
+        <div class="entry-list"> {# Using entry-list class as per provided HTML/CSS #}
+            {% if entries %} {# Check if there are any entries to display #}
+                {% for entry in entries %} {# Loop through each entry #}
+                <div class="password-entry"> {# Entry Row/Card #}
                     {# Icon #}
                     <div class="entry-icon {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}admin{% endif %}">
                         {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
                     </div>
 
-                    {# Details Column #}
+                    {# Main details section #}
                     <div class="entry-details">
                         <div class="entry-title">
-                            {{ entry.laptop_server }}
-                            {% if entry.brand_label %}<span class="entry-brand-tag">{{ entry.brand_label }}</span>{% endif %}
-                            {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}<i class="bi bi-person-badge text-warning ms-2" title="Entry belongs to another user"></i>{% endif %}
+                            {{ entry.laptop_server }} {# Laptop/Server ID #}
+                            {% if entry.brand_label %}<span class="entry-brand-tag">{{ entry.brand_label }}</span>{% endif %} {# Brand Tag #}
+                            {% if session.get('role') == 'admin' and entry.user_id|string != session.get('user_id') %}<i class="bi bi-person-badge text-warning ms-2" title="Entry belongs to another user"></i>{% endif %} {# Admin Indicator #}
                         </div>
-                        <div class="entry-subtitle"><i class="bi bi-person"></i> {{ entry.entry_username }}</div>
+                        {# Use entry-subtitle for username as per provided CSS/HTML #}
+                        <div class="entry-subtitle"><i class="bi bi-person me-1"></i> {{ entry.entry_username }}</div> {# Display Username #}
 
-                        {# --- PASSWORD AREA - ENSURE BUTTON IS HERE --- #}
+                        {# --- PASSWORD AREA - Including Show/Hide Button --- #}
                         <div class="entry-password-area">
                             <span class="password-mask" id="dots-{{ entry._id | string }}">••••••••••••</span>
-                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span>
+                            <span class="password-revealed" id="text-{{ entry._id | string }}" style="display: none;"></span> {# JS populates this when shown #}
                             <button type="button" class="action-btn-icon-only show-stored-btn" data-id="{{ entry._id | string }}" title="Show/Hide Password">
                                  <i class="bi bi-eye-fill"></i> {# Default icon state #}
                              </button>
@@ -54,9 +56,9 @@
                         {# --- END PASSWORD AREA --- #}
                     </div>
 
-                    {# --- ACTION BUTTONS - ENSURE THIS BLOCK IS HERE --- #}
+                    {# --- ACTION BUTTONS --- #}
                     <div class="entry-actions">
-                         {# Edit Button #}
+                         {# Edit Button (triggers modal) #}
                          <button type="button" class="action-btn-icon-only edit-btn" data-id="{{ entry._id | string }}" data-bs-toggle="modal" data-bs-target="#entryModal" title="Edit Entry">
                              <i class="bi bi-pencil-fill"></i>
                          </button>
@@ -64,7 +66,7 @@
                          <button type="button" class="action-btn-icon-only copy-btn" data-id="{{ entry._id | string }}" title="Copy Password">
                              <i class="bi bi-clipboard-fill"></i>
                          </button>
-                         {# Delete Button #}
+                         {# Delete Button (in a form) #}
                          <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
                              <button type="submit" class="action-btn-icon-only delete-btn" onclick="return confirm('Delete entry for \'{{ entry.laptop_server }}\'?');" title="Delete Entry">
                                  <i class="bi bi-trash-fill"></i>
@@ -74,28 +76,40 @@
                      {# --- END ACTION BUTTONS --- #}
                 </div> {# End password-entry #}
                 {% endfor %} {# End of loop #}
-            {% else %}
-                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;">
-                     {% if search_term %} No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
-                     {% else %} Vault is empty. Click "Add Entry" in the sidebar. {% endif %}
+            {% else %} {# If no entries exist (or match search) #}
+                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {# Adjust if not using grid #}
+                     {% if search_term %}
+                        No entries found matching your search criteria. <a href="{{ url_for('vault') }}" class="alert-link">Clear Search</a>
+                     {% else %}
+                        Your vault is empty. Click "Add Entry" in the sidebar to add items.
+                     {% endif %}
                  </div>
-            {% endif %}
-        </div> {# End entries-grid #}
+            {% endif %} {# End check for entries #}
+        </div> {# End entry-list #}
 
-        {# Include the Add/Edit Modal Partial #}
+        {# Include the Add/Edit Modal Partial (Contains the hidden Edit form structure) #}
         {% include 'partials/_add_edit_modal.html' %}
 
     </div> {# End content #}
 {% endblock %} {# End main_content block #}
 
 {% block scripts %}
+    {# Link the JavaScript specific to this vault layout #}
     <script src="{{ url_for('static', filename='js/vault-v3.js') }}"></script>
-    {# Inline script for Add Entry Cancel button #}
+    {# Inline script for Add Entry Cancel button (Can be moved to vault-v3.js if preferred) #}
     <script>
+        // Cancel Button Logic for Add Entry Form
         const cancelBtn = document.getElementById('cancel-add-entry');
         const addSection = document.getElementById('add-entry-section');
         const addSidebarBtn = document.getElementById('add-entry-sidebar-btn');
-        if (cancelBtn && addSection && addSidebarBtn) { /* Attach cancel listener */ }
-        // Other listeners are in vault-v3.js
+        if (cancelBtn && addSection && addSidebarBtn) {
+            cancelBtn.addEventListener('click', function() {
+                addSection.classList.add('hidden'); // Hide the form
+                addSidebarBtn.classList.remove('active'); // Deactivate sidebar button
+                const form = addSection.querySelector('form');
+                if(form) form.reset(); // Reset form fields
+            });
+        }
+        // All other button JS (Generate, Show/Hide, Edit Modal Trigger, Card buttons) handled by vault-v3.js
     </script>
 {% endblock %}
