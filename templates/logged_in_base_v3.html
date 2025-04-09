@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,67 +8,54 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
-    {# <div class="glow-effect pulse" style="top: 20%; left: 30%;"></div> #}
-    {# <div class="glow-effect pulse" style="top: 70%; left: 70%;"></div> #}
-
     <div class="sidebar">
-        <div class="sidebar-header"> {# Changed from logo #}
+        <div class="sidebar-header">
             <div class="logo">QV</div>
             <div class="logo-text">Quantum Vault</div>
         </div>
 
-        <div class="sidebar-menu"> {# Changed from menu #}
-            {# --- Determine active state based on request.endpoint --- #}
-            {% set active_page = request.endpoint %}
-
-            <a href="{{ url_for('vault') }}" class="menu-item {% if active_page == 'vault' %}active{% endif %}">
+        <div class="sidebar-menu">
+            {# Dashboard Link #}
+            <a href="{{ url_for('vault') }}" class="menu-item {% if request.endpoint == 'vault' %}active{% endif %}">
                  <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
-                <span class="menu-text">Dashboard</span> {# Changed text #}
+                <span class="menu-text">Dashboard</span>
             </a>
-            {# Placeholder for Add Entry Toggle - JS needed #}
-            <a href="#" class="menu-item" id="add-entry-sidebar-btn">
+            {# Add Entry Toggle Link #}
+            <a href="#" class="menu-item" id="add-entry-sidebar-btn"> {# Correct ID #}
                  <div class="icon"><i class="bi bi-plus-circle-fill"></i></div>
                 <span class="menu-text">Add Entry</span>
             </a>
-
-            {# --- 2FA Link --- #}
-            {# Assuming is_2fa_enabled is passed from Flask #}
-            {% if is_2fa_enabled %}
+             {# 2FA Management Link #}
+             {# Assumes 'is_2fa_enabled' is passed to this template via render_template #}
+             {% if is_2fa_enabled %}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
-                     <div class="icon"><i class="bi bi-shield-slash-fill" style="color: var(--warning);"></i></div>
+                     <div class="icon"><i class="bi bi-shield-slash-fill text-warning"></i></div>
                     <span class="menu-text">Disable 2FA</span>
                  </a>
                  <form id="disable-2fa-form" method="POST" action="{{ url_for('disable_2fa') }}" style="display: none;"></form>
-            {% else %}
-                  <a href="{{ url_for('setup_2fa') }}" class="menu-item {% if active_page == 'setup_2fa' %}active{% endif %}" title="Enable 2FA">
-                     <div class="icon"><i class="bi bi-shield-lock-fill" style="color: var(--success);"></i></div>
+             {% else %}
+                  <a href="{{ url_for('setup_2fa') }}" class="menu-item {% if request.endpoint == 'setup_2fa' %}active{% endif %}" title="Enable 2FA">
+                     <div class="icon"><i class="bi bi-shield-lock-fill text-success"></i></div>
                     <span class="menu-text">Enable 2FA</span>
                 </a>
-            {% endif %}
-
-            {# --- Optional Admin Section --- #}
-             {% if session.get('role') == 'admin' %}
-                <div class="menu-category">Administration</div>
-                <a href="{{ url_for('admin_users') }}" class="menu-item admin {% if active_page.startswith('admin_') %}active{% endif %}">
-                    <div class="icon"><i class="bi bi-people-fill"></i></div>
-                    <span class="menu-text">User Management</span>
-                </a>
-                {# Add other admin links here if needed #}
              {% endif %}
 
-             {# --- Settings Link --- #}
-              <a href="#" class="menu-item"> {# Placeholder for Settings #}
-                 <div class="icon"><i class="bi bi-gear-fill"></i></div>
-                <span class="menu-text">Settings</span>
-            </a>
+             {# Admin Link #}
+             {% if session.get('role') == 'admin' %}
+                 <hr style="border-color: var(--border); margin: 10px 0;">
+                 <a href="{{ url_for('admin_users') }}" class="menu-item admin {% if request.endpoint.startswith('admin_') %}active{% endif %}">
+                     <div class="icon"><i class="bi bi-people-fill"></i></div>
+                    <span class="menu-text">Manage Users</span>
+                </a>
+             {% endif %}
+             {# Settings Link Placeholder #}
+             {# <a href="#" class="menu-item"><div class="icon"><i class="bi bi-gear-fill"></i></div><span class="menu-text">Settings</span></a> #}
         </div>
 
-        <div class="user-profile"> {# Changed from user-section #}
+        <div class="user-profile">
             <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
             <div class="user-info">
                 <div class="user-name">{{ current_username }}</div>
-                {# Optionally display role #}
-                <div class="user-details">{{ session.get('role', 'user')|capitalize }}</div>
             </div>
              <a href="{{ url_for('logout') }}" class="action-btn-icon-only" title="Logout">
                  <i class="bi bi-box-arrow-right"></i>
@@ -76,15 +63,12 @@
         </div>
     </div>
 
-    <div class="main-content-wrapper"> {# Changed from main-content #}
-         {# Removed topbar div - integrated elements into header or remove #}
-
-        <div class="header">
+    <div class="main-content-wrapper">
+        <div class="header"> {# Header only contains search #}
              <form method="GET" action="{{ url_for('vault') }}" class="search-form">
                 <div class="search-container">
                     <div class="search-icon"><i class="bi bi-search"></i></div>
-                     {# Ensure name attribute is correct #}
-                    <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
+                     <input type="search" class="search-input" name="search_term" placeholder="Search ID, Brand, Username..." value="{{ search_term or '' }}">
                 </div>
                 {% if search_term %}
                     <a href="{{ url_for('vault') }}" class="btn btn-outline btn-icon" title="Clear Search"> <i class="bi bi-x-lg"></i> </a>
@@ -92,13 +76,8 @@
                     <button type="submit" class="btn btn-primary btn-icon btn-search" title="Search"> <i class="bi bi-search"></i> </button>
                 {% endif %}
             </form>
-
-            <div class="header-actions">
-                 {# Removed Export/Admin buttons - handle elsewhere if needed #}
-                <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
-                    <i class="bi bi-plus-lg"></i> Add Entry
-                </button>
-            </div>
+             {# Header Actions Div (Empty but kept for structure) #}
+             <div class="header-actions"></div>
         </div>
 
          {# Flash Messages Container #}
@@ -106,10 +85,8 @@
              {% with messages = get_flashed_messages(with_categories=true) %}
                  {% if messages %}
                      {% for category, message in messages %}
-                         {# Render Bootstrap alerts #}
                          {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
                          <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                             {# Add appropriate icon #}
                              {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
                              {{ message }}
                              <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
@@ -120,7 +97,7 @@
          </div>
 
         {# Main Content Block #}
-        {% block content %}{% endblock %}
+        {% block main_content %}{% endblock %}
 
     </div> {# End main-content-wrapper #}
 
