@@ -18,12 +18,9 @@ def derive_key(master_password, salt):
 def encrypt_data(data, key):
     if not data: return b''
     if not isinstance(key, bytes): raise TypeError("Key must be bytes.")
-    try:
-        f = Fernet(key)
-        if isinstance(data, str):
-            data_bytes = data.encode('utf-8')
-        else:
-            data_bytes = data
+    try: f = Fernet(key);
+        if isinstance(data, str): data_bytes = data.encode('utf-8')
+        else: data_bytes = data
         return f.encrypt(data_bytes)
     except Exception as e: print(f"Encryption error: {e}"); raise
 def decrypt_data(encrypted_data, key):

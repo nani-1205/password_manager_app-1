@@ -20,7 +20,7 @@ def login_required(f):
         if 'user_id' not in session: flash('Please log in.', 'warning'); return redirect(url_for('login'))
         if session.get('2fa_required') and not session.get('2fa_passed'):
             if request.endpoint != 'login_2fa': flash('2FA required.', 'warning'); return redirect(url_for('login_2fa'))
-        needs_key = request.endpoint not in ['login', 'signup', 'logout', 'login_2fa', 'index', 'setup_2fa', 'disable_2fa', 'static', 'admin_users', 'admin_toggle_user_status', 'admin_change_user_role', 'admin_delete_user'] # Allow admin routes without key check here, verify admin role instead
+        needs_key = request.endpoint not in ['login', 'signup', 'logout', 'login_2fa', 'index', 'setup_2fa', 'disable_2fa', 'admin_users', 'admin_toggle_user_status', 'admin_change_user_role', 'admin_delete_user', 'static'] # Allow admin routes without explicit key check here
         if needs_key and 'encryption_key' not in session:
              flash('Session invalid or key missing. Please log in again.', 'error')
              session.clear(); return redirect(url_for('login'))
@@ -30,9 +30,7 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if session.get('role') != 'admin':
-            flash('Admin access required.', 'error')
-            return redirect(url_for('vault')) # Redirect non-admins
+        if session.get('role') != 'admin': flash('Admin access required.', 'error'); return redirect(url_for('vault'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -104,8 +102,7 @@ def signup():
         else:
             try:
                 salt = encryption.generate_salt(); hashed_password = encryption.hash_master_password(password, salt)
-                # add_user defaults role='user' but sets first user to 'admin'
-                user_id = db.add_user(username, hashed_password, salt)
+                user_id = db.add_user(username, hashed_password, salt) # Defaults role='user', first user becomes 'admin'
                 if user_id:
                     flash('Account created! Please log in.', 'success');
                     try: db.ensure_indexes()
@@ -119,7 +116,6 @@ def signup():
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 @login_required
 def setup_2fa():
-    # ... (setup_2fa logic as before) ...
     user_id = session['user_id']; username = session['username']
     if request.method == 'POST':
         secret_key = request.form.get('secret_key'); totp_code = request.form.get('totp_code')
@@ -130,13 +126,11 @@ def setup_2fa():
                 flash('2FA enabled successfully!', 'success'); session['is_2fa_enabled'] = True; return redirect(url_for('vault'))
             else: flash('Failed to save 2FA settings.', 'error'); return redirect(url_for('setup_2fa'))
         else:
-            flash('Invalid verification code.', 'error')
-            provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
+            flash('Invalid verification code.', 'error'); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
             return render_template('quantum_setup_2fa_v2.html', secret_key=secret_key, qr_code_data=qr_code_data)
-    secret_key = pyotp.random_base32()
-    provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
+    secret_key = pyotp.random_base32(); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
     qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
     if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
     return render_template('quantum_setup_2fa_v2.html', secret_key=secret_key, qr_code_data=qr_code_data)
@@ -144,17 +138,58 @@ def setup_2fa():
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
 def disable_2fa():
-    # ... (disable_2fa logic as before) ...
     user_id = session['user_id']
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
     return redirect(url_for('vault'))
 
+# --- Admin Routes ---
+@app.route('/admin/users')
+@login_required
+@admin_required
+def admin_users():
+    all_users = db.get_all_users(); return render_template('admin_users.html', users=all_users)
+@app.route('/admin/user/status/<user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_toggle_user_status(user_id):
+    all_users = db.get_all_users(); target_user_data = next((u for u in all_users if str(u['_id']) == user_id), None)
+    if not target_user_data: flash('User not found.', 'error'); return redirect(url_for('admin_users'))
+    if str(target_user_data['_id']) == session.get('user_id'): flash('Cannot disable self.', 'error'); return redirect(url_for('admin_users'))
+    new_status = not target_user_data.get('is_active', True)
+    if db.set_user_status(user_id, new_status): flash(f"User '{target_user_data['username']}' status set to {'Active' if new_status else 'Disabled'}.", 'success')
+    else: flash('Failed to update status.', 'error')
+    return redirect(url_for('admin_users'))
+@app.route('/admin/user/role/<user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_change_user_role(user_id):
+    new_role = request.form.get('role')
+    if not new_role or new_role not in ['admin', 'user']: flash('Invalid role.', 'error'); return redirect(url_for('admin_users'))
+    if str(user_id) == session.get('user_id') and new_role == 'user': flash('Cannot demote self.', 'error'); return redirect(url_for('admin_users'))
+    if db.set_user_role(user_id, new_role): flash(f"User role updated.", 'success')
+    else: flash('Failed to update role.', 'error')
+    return redirect(url_for('admin_users'))
+@app.route('/admin/user/delete/<user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    if str(user_id) == session.get('user_id'): flash('Cannot delete self.', 'error'); return redirect(url_for('admin_users'))
+    if db.delete_user_by_id(user_id): flash(f"User deleted.", 'success')
+    else: flash('Failed to delete user.', 'error')
+    return redirect(url_for('admin_users'))
+@app.route('/admin/view_vault/<user_id>')
+@login_required
+@admin_required
+def admin_view_user_vault(user_id):
+     all_users = db.get_all_users(); target_user = next((u for u in all_users if str(u['_id']) == user_id), None)
+     if not target_user: flash('Target user not found.', 'error'); return redirect(url_for('admin_users'))
+     entries = db.get_vault_entries_for_user(user_id); return render_template('admin_view_vault.html', entries=entries, target_user=target_user)
+
 # --- Vault ---
 @app.route('/vault')
 @login_required
 def vault():
-    # ... (vault logic as before) ...
     user_id = session['user_id']; search_term = request.args.get('search_term', '')
     entries = db.get_vault_entries(user_id, search_term=search_term)
     return render_template('quantum_vault_v2.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username'))
@@ -162,7 +197,6 @@ def vault():
 @app.route('/add_entry', methods=['POST'])
 @login_required
 def add_entry():
-    # ... (add_entry logic as before) ...
     laptop_server = request.form.get('laptop_server'); brand_label = request.form.get('brand_label')
     entry_username = request.form.get('entry_username'); password = request.form.get('entry_password')
     user_id = session['user_id']; encryption_key = session.get('encryption_key')
@@ -177,126 +211,59 @@ def add_entry():
         except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-@app.route('/edit_entry/<entry_id>', methods=['GET'])
+@app.route('/edit_entry/<entry_id>', methods=['GET']) # Kept GET route for potential direct access/bookmarking
 @login_required
 def edit_entry(entry_id):
-    # ... (edit_entry logic with corrected decryption check) ...
-    user_id = session['user_id']; encryption_key = session.get('encryption_key')
-    if not encryption_key: flash('Session error: Key missing.', 'error'); session.clear(); return redirect(url_for('login'))
-    entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
-    if not entry_data: flash('Entry not found or permission denied.', 'error'); return redirect(url_for('vault'))
-    decrypted_password = "";
-    if entry_data.get('encrypted_password'):
-        try:
-            decrypted_password = encryption.decrypt_data(entry_data['encrypted_password'], encryption_key)
-            if decrypted_password is None: flash('Error decrypting password.', 'warning'); decrypted_password = ""
-        except Exception as e: print(f"Edit Decrypt Error: {e}"); flash('Error preparing edit.', 'error'); return redirect(url_for('vault'))
-    edit_data = { '_id': str(entry_data['_id']), 'laptop_server': entry_data.get('laptop_server', ''), 'brand_label': entry_data.get('brand_label', ''), 'entry_username': entry_data.get('entry_username', ''), 'password': decrypted_password }
-    return render_template('quantum_edit_entry.html', entry=edit_data)
+    # This route now ideally just redirects to the vault,
+    # as editing happens via modal triggered from the vault page.
+    # Or it could render a dedicated edit page if modal approach is removed.
+    # For now, let's just redirect to vault. The JS handles modal display.
+    flash('Use the edit icon on the vault dashboard.', 'info')
+    return redirect(url_for('vault'))
 
 
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
 def update_entry(entry_id):
-    # ... (update_entry logic with optional password update) ...
     user_id = session['user_id']; encryption_key = session.get('encryption_key')
     if not encryption_key: flash('Session error: Key missing.', 'error'); session.clear(); return redirect(url_for('login'))
     new_laptop_server = request.form.get('laptop_server'); new_brand_label = request.form.get('brand_label')
     new_entry_username = request.form.get('entry_username'); new_plain_password = request.form.get('password')
-    if not new_laptop_server or not new_entry_username: flash('Laptop/Server ID and Username required.', 'error'); return redirect(url_for('edit_entry', entry_id=entry_id)) # Redirect back to edit on validation fail
+    if not new_laptop_server or not new_entry_username: flash('Laptop/Server ID and Username required.', 'error'); return redirect(url_for('vault')) # Redirect to vault on error
     original_entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
     if not original_entry_data: flash('Permission denied or entry not found.', 'error'); return redirect(url_for('vault'))
     if new_plain_password:
         try: new_encrypted_password = encryption.encrypt_data(new_plain_password, encryption_key)
-        except Exception as e: flash(f'Error encrypting new password: {e}', 'error'); return redirect(url_for('edit_entry', entry_id=entry_id))
+        except Exception as e: flash(f'Error encrypting new password: {e}', 'error'); return redirect(url_for('vault')) # Redirect to vault on error
     else:
         new_encrypted_password = original_entry_data.get('encrypted_password', b'')
-        # Avoid flashing "unchanged" if password never existed
-        # if new_encrypted_password == original_entry_data.get('encrypted_password'): flash('Password unchanged.', 'info')
+        # flash('Password unchanged.', 'info') # Avoid flash message if password wasn't intended to change
     success = db.update_vault_entry(entry_id, new_laptop_server, new_brand_label, new_entry_username, new_encrypted_password)
     if success: flash('Entry updated!', 'success')
-    else: flash('Failed to update entry.', 'error')
+    else: flash('Failed to update entry (or no changes made).', 'warning') # Changed to warning if no change
     return redirect(url_for('vault'))
-
 
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
-    # ... (delete_entry logic with corrected indentation) ...
      user_id = session['user_id']; entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
      if entry_data:
          try:
              success = db.delete_vault_entry(entry_id)
-             if success:
-                 flash('Entry deleted.', 'success')
-             else:
-                 flash('Failed to delete entry from database.', 'error')
-         except Exception as e:
-             flash(f'Error occurred during deletion: {e}', 'error')
-     else:
-         flash('Cannot delete entry (not found or permission denied).', 'error')
+             if success: flash('Entry deleted.', 'success')
+             else: flash('Failed to delete entry from database.', 'error')
+         except Exception as e: flash(f'Error occurred during deletion: {e}', 'error')
+     else: flash('Cannot delete entry (not found or permission denied).', 'error')
      return redirect(url_for('vault'))
 
-# --- NEW Admin Routes ---
-@app.route('/admin/users')
-@login_required
-@admin_required # Checks role
-def admin_users():
-    all_users = db.get_all_users()
-    return render_template('admin_users.html', users=all_users)
-
-@app.route('/admin/user/status/<user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_toggle_user_status(user_id):
-    all_users = db.get_all_users() # Simple way to get target user data
-    target_user_data = next((u for u in all_users if str(u['_id']) == user_id), None)
-    if not target_user_data: flash('User not found.', 'error'); return redirect(url_for('admin_users'))
-    if str(target_user_data['_id']) == session.get('user_id'): flash('Cannot disable self.', 'error'); return redirect(url_for('admin_users'))
-    new_status = not target_user_data.get('is_active', True)
-    if db.set_user_status(user_id, new_status): flash(f"User '{target_user_data['username']}' status set to {'Active' if new_status else 'Disabled'}.", 'success')
-    else: flash('Failed to update status.', 'error')
-    return redirect(url_for('admin_users'))
-
-@app.route('/admin/user/role/<user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_change_user_role(user_id):
-    new_role = request.form.get('role')
-    if not new_role or new_role not in ['admin', 'user']: flash('Invalid role.', 'error'); return redirect(url_for('admin_users'))
-    if str(user_id) == session.get('user_id') and new_role == 'user': flash('Cannot demote self.', 'error'); return redirect(url_for('admin_users'))
-    # Add check for last admin if needed
-    if db.set_user_role(user_id, new_role): flash(f"User role updated.", 'success')
-    else: flash('Failed to update role.', 'error')
-    return redirect(url_for('admin_users'))
-
-@app.route('/admin/user/delete/<user_id>', methods=['POST'])
-@login_required
-@admin_required
-def admin_delete_user(user_id):
-    if str(user_id) == session.get('user_id'): flash('Cannot delete self.', 'error'); return redirect(url_for('admin_users'))
-    # Add extra confirmation?
-    if db.delete_user_by_id(user_id): flash(f"User deleted.", 'success')
-    else: flash('Failed to delete user.', 'error')
-    return redirect(url_for('admin_users'))
-
-@app.route('/admin/view_vault/<user_id>')
-@login_required
-@admin_required
-def admin_view_user_vault(user_id):
-     all_users = db.get_all_users() # Simple way to get target username
-     target_user = next((u for u in all_users if str(u['_id']) == user_id), None)
-     if not target_user: flash('Target user not found.', 'error'); return redirect(url_for('admin_users'))
-     entries = db.get_vault_entries_for_user(user_id) # Gets metadata only
-     return render_template('admin_view_vault.html', entries=entries, target_user=target_user)
-
-
-# --- APIs (Unchanged) ---
+# --- APIs ---
 @app.route('/generate_password')
 @login_required
 def generate_password_api():
     try: return jsonify({'password': utils.generate_password(16)})
     except Exception as e: print(f"Gen pass error: {e}"); return jsonify({'error': 'Failed'}), 500
+
+# API to get password only (for copy/show in vault card)
 @app.route('/get_password/<entry_id>')
 @login_required
 def get_password_api(entry_id):
@@ -314,7 +281,30 @@ def get_password_api(entry_id):
         else: return jsonify({'error': 'Not found/denied'}), 404
     except Exception as e: print(f"Get pass error for entry '{entry_id}': {e}"); return jsonify({'error': 'Internal error'}), 500
 
-# --- Main Execution (Unchanged) ---
+# NEW API Endpoint specifically for populating the Edit modal
+@app.route('/get_entry_details/<entry_id>')
+@login_required
+def get_entry_details_api(entry_id):
+    user_id = session['user_id']; encryption_key = session.get('encryption_key')
+    if not encryption_key: return jsonify({'error': 'Key missing'}), 401
+    try:
+        entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
+        if not entry_data: return jsonify({'error': 'Not found/denied'}), 404
+        decrypted_password = ""
+        encrypted_pass = entry_data.get('encrypted_password')
+        if encrypted_pass:
+            decrypted_pass = encryption.decrypt_data(encrypted_pass, encryption_key)
+            if decrypted_pass is None: decrypted_password = "" # Don't send None, send empty string on decrypt fail
+        details = {
+            'laptop_server': entry_data.get('laptop_server', ''),
+            'brand_label': entry_data.get('brand_label', ''),
+            'entry_username': entry_data.get('entry_username', ''),
+            'password': decrypted_password
+        }
+        return jsonify(details)
+    except Exception as e: print(f"Get entry details error for entry '{entry_id}': {e}"); return jsonify({'error': 'Internal error'}), 500
+
+# --- Main Execution ---
 if __name__ == '__main__':
     try:
         print("Attempting initial database connection check...")
