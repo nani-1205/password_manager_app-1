@@ -126,7 +126,8 @@ def setup_2fa():
                 flash('2FA enabled successfully!', 'success'); session['is_2fa_enabled'] = True; return redirect(url_for('vault'))
             else: flash('Failed to save 2FA settings.', 'error'); return redirect(url_for('setup_2fa'))
         else:
-            flash('Invalid verification code.', 'error'); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
+            flash('Invalid verification code.', 'error')
+            provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
             return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
@@ -194,9 +195,22 @@ def admin_view_user_vault(user_id):
 @app.route('/vault')
 @login_required
 def vault():
-    user_id = session['user_id']; search_term = request.args.get('search_term', '')
+    user_id = session['user_id']
+    search_term = request.args.get('search_term', '')
+    # Make sure this function fetches full entries for the owner
     entries = db.get_vault_entries(user_id, search_term=search_term)
-    return render_template('quantum_vault_v3.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username'))
+
+    # Debugging statement
+    print(f"DEBUG: Rendering vault for {session.get('username')}, found {len(entries)} entries.")
+    # print(f"DEBUG: First entry sample: {entries[0] if entries else 'None'}")
+
+    return render_template(
+        'quantum_vault_v3.html', # Ensure using V3 template
+        entries=entries,
+        search_term=search_term,
+        is_2fa_enabled=session.get('is_2fa_enabled'),
+        current_username=session.get('username')
+    )
 
 @app.route('/add_entry', methods=['POST'])
 @login_required
@@ -210,15 +224,12 @@ def add_entry():
         try:
             encrypted_password = encryption.encrypt_data(password, encryption_key)
             entry_id = db.add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password)
-            if entry_id:
-                flash('Entry added!', 'success')
-            else:
-                flash('Failed to add entry.', 'error')
-        except Exception as e:
-            flash(f'Error adding entry: {e}', 'error')
+            if entry_id: flash('Entry added!', 'success')
+            else: flash('Failed to add entry.', 'error')
+        except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-# Edit route removed (using modal)
+# Edit route removed - handled by modal
 
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
@@ -252,14 +263,10 @@ def delete_entry(entry_id):
      if can_delete:
          try:
              success = db.delete_vault_entry(entry_id);
-             if success:
-                 flash('Entry deleted.', 'success')
-             else:
-                 flash('Failed to delete entry from database.', 'error')
-         except Exception as e:
-             flash(f'Error occurred during deletion: {e}', 'error')
-     else:
-         flash('Cannot delete entry (not found or permission denied).', 'error')
+             if success: flash('Entry deleted.', 'success')
+             else: flash('Failed to delete.', 'error')
+         except Exception as e: flash(f'Error deleting: {e}', 'error')
+     else: flash('Cannot delete (not found/permission denied).', 'error')
      return redirect(url_for('vault'))
 
 # --- APIs ---
