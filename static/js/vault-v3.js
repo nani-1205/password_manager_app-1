@@ -1,7 +1,7 @@
 // static/js/vault-v3.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Quantum Vault V3 JS Loaded - Final Check");
+    console.log("Quantum Vault V3 JS Loaded - Final Check with All Logic");
 
     // --- API Fetch Helper ---
     async function fetchApi(url, options = {}) {
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (addEntrySidebarBtn && addEntrySection) {
         addEntrySidebarBtn.addEventListener('click', function(event) {
-            event.preventDefault(); // Prevent default link behavior
+            event.preventDefault(); // Prevent default anchor tag behavior
             console.log("Sidebar Add Entry Clicked!"); // Debug
 
             const isHidden = addEntrySection.classList.contains('hidden');
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 addEntrySection.classList.remove('hidden');
                 this.classList.add('active'); // Highlight sidebar item
                  setTimeout(() => { // Delay scroll slightly
-                    const section = document.getElementById('add-entry-section');
+                    const section = document.getElementById('add-entry-section'); // Re-check element
                     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
                  }, 50);
             } else {
@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const addEntryForm = document.getElementById('add-entry-form');
     if (addEntryForm) {
         const generateBtnAdd = addEntryForm.querySelector('#generate-add-btn');
-        const passwordFieldAdd = addEntryForm.querySelector('#add_entry_password'); // Use correct ID
-        const showHideBtnAdd = addEntryForm.querySelector('#show-hide-add-btn'); // Use correct ID
+        const passwordFieldAdd = addEntryForm.querySelector('#add_entry_password'); // Use specific ID
+        const showHideBtnAdd = addEntryForm.querySelector('#show-hide-add-btn'); // Use specific ID
         const cancelBtnAdd = addEntryForm.querySelector('#cancel-add-entry');
 
         // Generate Password Button (Add Form)
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // console.log("Attaching listener to ADD form generate button"); // Debug
             generateBtnAdd.addEventListener('click', async function() {
                 // console.log("ADD form generate button clicked"); // Debug
-                const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
+                const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
                 try {
                     const data = await fetchApi('/generate_password');
                     if (data.password) {
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
              // console.log("Attaching listener to ADD form cancel button"); // Debug
              cancelBtnAdd.addEventListener('click', function() {
                 // console.log("Add form cancel button clicked"); // Debug
-                // Use variables defined in outer scope (should be accessible)
+                // Use variables defined in outer scope
                 if (addEntrySection) { addEntrySection.classList.add('hidden'); }
                 else { console.error("Cancel Error: Cannot find #add-entry-section to hide."); }
                 if (addEntrySidebarBtn) { addEntrySidebarBtn.classList.remove('active'); }
@@ -146,6 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     editPasswordInput.type = 'password';
                     if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-fill'; showHideEditModalBtn.title = 'Show Password';}
                     editModalTitle.textContent = `Edit: ${data.laptop_server || 'Entry'}`;
+                    // Modal is shown via data-bs-toggle, no need for JS show()
+
                 } catch (error) {
                     alert(`Failed to load entry details: ${error.message}`);
                     editModalTitle.textContent = 'Edit Vault Entry';
@@ -192,80 +194,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Show/Hide Stored Password in Vault Cards ---
     document.querySelectorAll('.entry-card .show-stored-btn').forEach(button => {
-         // console.log("Attaching listener to VAULT CARD show/hide button", button); // DEBUG
+         // console.log("Attaching listener to VAULT CARD show/hide button", button); // Debug
          button.addEventListener('click', async function(event) {
-             event.stopPropagation(); // Prevent card click event if any
-             // console.log("Vault card show/hide clicked!", this.getAttribute('data-id')); // DEBUG
+             event.stopPropagation();
+             // console.log("Vault card show/hide clicked!", this.getAttribute('data-id')); // Debug
 
-             const card = this.closest('.entry-card'); // Find the parent card
-             if (!card) { console.error("Cannot find parent .entry-card"); return; }
-
+             const card = this.closest('.entry-card'); if (!card) { console.error("Cannot find parent .entry-card"); return; }
              const entryId = this.getAttribute('data-id');
-             const dotsSpan = card.querySelector('.password-mask'); // Find mask within THIS card
-             const textSpan = card.querySelector('.password-revealed'); // Find text span within THIS card
+             const dotsSpan = card.querySelector('.password-mask');
+             const textSpan = card.querySelector('.password-revealed');
              const icon = this.querySelector('i');
+             // console.log("Found Elements:", { entryId, dotsSpan, textSpan, icon }); // Debug
+             if (!dotsSpan || !textSpan || !icon || !entryId) { console.error("Missing elements for show/hide", {dotsSpan, textSpan, icon, entryId}); return; }
 
-             // console.log("Found Elements:", { entryId, dotsSpan, textSpan, icon }); // DEBUG
-
-             if (!dotsSpan || !textSpan || !icon || !entryId) {
-                 console.error("Missing required elements for show/hide", {dotsSpan, textSpan, icon, entryId}); // DEBUG
-                 return;
-             }
-
-             // Check if text is currently visible (based on its display style)
-             if (textSpan.style.display !== 'none') {
-                 // --- HIDE ACTION ---
-                 // console.log("Hiding password"); // DEBUG
-                 textSpan.style.display = 'none';
-                 textSpan.textContent = ''; // Clear password from HTML for security on hide
-                 dotsSpan.style.display = 'inline-block'; // Or 'block' if needed by layout
-                 icon.className = 'bi bi-eye-fill'; // Show 'eye' icon
-                 this.title = 'Show Password';
-             } else {
-                 // --- SHOW ACTION ---
-                 // Fetch only if text content is currently empty
-                 if (!textSpan.textContent) {
-                     // console.log("Fetching password to show..."); // DEBUG
-                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; // Show loading indicator
-                     this.disabled = true;
+             if (textSpan.style.display !== 'none') { // --- HIDE ---
+                 // console.log("Hiding password"); // Debug
+                 textSpan.style.display = 'none'; textSpan.textContent = ''; // Clear password
+                 dotsSpan.style.display = 'inline-block';
+                 icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
+             } else { // --- SHOW ---
+                 if (!textSpan.textContent) { // Fetch only if needed
+                     // console.log("Fetching password to show..."); // Debug
+                     const originalHtml = this.innerHTML; // Store original icon HTML
+                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
                      try {
-                         const data = await fetchApi(`/get_password/${entryId}`); // Call API
-                         // console.log("API Response for show:", data); // DEBUG
-                         if (data.password !== undefined) { // Check key exists
-                             textSpan.textContent = data.password || '(empty)'; // Populate span
-                         } else {
-                              throw new Error(data.error || 'No password data');
-                         }
-                     }
-                     catch (error) {
-                         console.error("Error fetching password for show:", error); // DEBUG
-                         alert('Error fetching password: ' + error.message);
+                         const data = await fetchApi(`/get_password/${entryId}`);
+                         // console.log("API Response for show:", data); // Debug
+                         if (data.password !== undefined) textSpan.textContent = data.password || '(empty)';
+                         else throw new Error(data.error || 'No password data');
+                     } catch (error) {
+                         console.error("Error fetching password for show:", error);
+                         alert('Error: ' + error.message);
                          this.innerHTML = '<i class="bi bi-eye-fill"></i>'; // Restore icon on error
-                         this.disabled = false;
-                         return; // Stop execution if fetch failed
-                     }
-                     finally {
-                         this.disabled = false; // Re-enable button
-                         // Ensure icon is correct even if loading indicator was fast
-                         // Use the eye-slash icon only if we successfully got here without error
-                         if (textSpan.textContent !== '(empty)') { // Check content again just before changing icon
-                             this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; // Show 'eye-slash' icon after fetch
-                             this.title = 'Hide Password';
-                         } else {
-                              this.innerHTML = '<i class="bi bi-eye-fill"></i>'; // Restore default if empty
-                         }
-                     }
+                         this.disabled = false; return; // Stop
+                     } finally { this.disabled = false; }
+                 } else { /* console.log("Password already fetched, just showing."); */ } // Already fetched
+
+                 // Update display and icon state *after* potential fetch/error handling
+                 if (textSpan.textContent || textSpan.textContent === '') { // Check if content was set (even if empty string)
+                    textSpan.style.display = 'inline-block'; dotsSpan.style.display = 'none';
+                    icon.className = 'bi bi-eye-slash-fill'; this.title = 'Hide Password';
+                    if (!this.querySelector('i')) this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>'; // Restore icon if spinner was used
                  } else {
-                      // console.log("Password already fetched, just showing."); // DEBUG
-                 }
-                 // Show text span, hide dots span
-                 textSpan.style.display = 'inline-block'; // Or 'block'
-                 dotsSpan.style.display = 'none';
-                 icon.className = 'bi bi-eye-slash-fill'; // Ensure icon is slash
-                 this.title = 'Hide Password';
-                 // If the button still has the spinner (e.g., very fast response), ensure icon is restored
-                 if (!this.querySelector('i')) {
-                     this.innerHTML = '<i class="bi bi-eye-slash-fill"></i>';
+                     // If fetch failed and textSpan is still empty, reset to hidden state
+                     textSpan.style.display = 'none'; dotsSpan.style.display = 'inline-block';
+                     icon.className = 'bi bi-eye-fill'; this.title = 'Show Password';
+                     if (!this.querySelector('i')) this.innerHTML = '<i class="bi bi-eye-fill"></i>';
                  }
              }
          });
@@ -278,9 +252,8 @@ document.addEventListener('DOMContentLoaded', function() {
              const entryId = this.getAttribute('data-id'); const icon = this.querySelector('i');
              const originalIconClass = icon ? icon.className : 'bi bi-clipboard-fill';
              if (icon) icon.className = 'spinner-border spinner-border-sm text-primary'; this.disabled = true; this.title = 'Copying...';
-
              try { const data = await fetchApi(`/get_password/${entryId}`);
-                 if (data.password === undefined) throw new Error(data.error || 'No password data'); // Check response
+                 if (data.password === undefined) throw new Error(data.error || 'No password data');
                  await navigator.clipboard.writeText(data.password);
                  if (icon) icon.className = 'bi bi-check-lg text-success'; this.title = 'Copied!';
                  setTimeout(() => { if (icon) icon.className = originalIconClass; this.disabled = false; this.title = 'Copy Password'; }, 1500);
