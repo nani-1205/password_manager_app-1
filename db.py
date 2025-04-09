@@ -4,7 +4,7 @@ import config # For DB connection details and collection names
 from bson import ObjectId # For converting string IDs to MongoDB ObjectIds
 import re # For regular expression searches
 
-# Global variables to hold the client and database connections
+# Global variables for connection and db object
 _client = None
 _db = None
 
@@ -131,8 +131,7 @@ def add_user(username, hashed_password, salt, role='user', is_active=True):
             "role": role, "is_active": is_active
         }
         # Check if this is the very first user being added
-        # Use estimated_document_count for potentially better performance on sharded clusters
-        # Use count_documents for precise count if needed and not sharded heavily
+        # Use count_documents for accuracy on non-sharded or small collections
         if db_conn[config.USERS_COLLECTION].count_documents({}, limit=1) == 0:
             user_data["role"] = "admin" # Promote first user to admin
             print("INFO: First user created, setting role to 'admin'.")
@@ -153,9 +152,10 @@ def set_user_2fa_secret(user_id, secret):
     try:
         db_conn = get_db()
         result = db_conn[config.USERS_COLLECTION].update_one(
-            {"_id": ObjectId(user_id)}, {"$set": {"totp_secret": secret}}
+            {"_id": ObjectId(user_id)}, # Find user by ID
+            {"$set": {"totp_secret": secret}} # Set the secret field
         )
-        return result.modified_count > 0
+        return result.modified_count > 0 # Return True if updated
     except Exception as e:
         print(f"Error setting 2FA secret user '{user_id}': {e}")
         return False
@@ -165,7 +165,7 @@ def enable_user_2fa(user_id, enable=True):
     try:
         db_conn = get_db()
         result = db_conn[config.USERS_COLLECTION].update_one(
-            {"_id": ObjectId(user_id)}, {"$set": {"is_2fa_enabled": bool(enable)}}
+            {"_id": ObjectId(user_id)}, {"$set": {"is_2fa_enabled": bool(enable)}} # Ensure boolean value
         )
         return result.modified_count > 0
     except Exception as e:
@@ -177,7 +177,7 @@ def disable_user_2fa(user_id):
     try:
         db_conn = get_db()
         result = db_conn[config.USERS_COLLECTION].update_one(
-            {"_id": ObjectId(user_id)}, {"$set": {"is_2fa_enabled": False, "totp_secret": None}}
+            {"_id": ObjectId(user_id)}, {"$set": {"is_2fa_enabled": False, "totp_secret": None}} # Clear secret
         )
         return result.modified_count > 0
     except Exception as e:
@@ -203,7 +203,7 @@ def set_user_status(user_id, is_active):
     try:
         db_conn = get_db()
         result = db_conn[config.USERS_COLLECTION].update_one(
-            {"_id": ObjectId(user_id)}, {"$set": {"is_active": bool(is_active)}}
+            {"_id": ObjectId(user_id)}, {"$set": {"is_active": bool(is_active)}} # Ensure boolean
         )
         return result.modified_count > 0
     except Exception as e:
@@ -212,7 +212,7 @@ def set_user_status(user_id, is_active):
 
 def set_user_role(user_id, role):
     """Admin function to set the 'role' for a user ('admin' or 'user')."""
-    if role not in ['admin', 'user']:
+    if role not in ['admin', 'user']: # Validate role
         print(f"Invalid role specified for update: {role}")
         return False
     try:
@@ -260,9 +260,9 @@ def get_vault_entries(user_id, search_term=None): # For user's own vault view
     """Retrieves vault entries for the specified user, optionally filtered and sorted."""
     try:
         db_conn = get_db(); query_user_id = ObjectId(user_id) if isinstance(user_id, str) else user_id
-        query = {"user_id": query_user_id}
-        if search_term:
-            safe_search_term = re.escape(search_term)
+        query = {"user_id": query_user_id} # Base filter for user
+        if search_term: # Add search filter if term provided
+            safe_search_term = re.escape(search_term) # Escape regex special chars
             query["$or"] = [ # Case-insensitive regex search on multiple fields
                 {"laptop_server": {"$regex": safe_search_term, "$options": "i"}},
                 {"brand_label": {"$regex": safe_search_term, "$options": "i"}},
