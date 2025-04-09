@@ -64,7 +64,7 @@ def login():
                  except Exception as e: print(f"DEBUG Login Err (no 2FA): {e}"); traceback.print_exc(); flash(f'Login process error: {e}', 'error'); session.clear(); return render_template('quantum_login_v3.html')
         else: flash('Invalid username or password.', 'error'); session.clear()
     session.pop('_2fa_user_id', None); session.pop('_2fa_username', None); session.pop('_2fa_salt', None); session.pop('2fa_required', None); session.pop('_2fa_passed', None)
-    return render_template('quantum_login_v3.html')
+    return render_template('quantum_login_v3.html') # Renders public V3 login
 
 @app.route('/login/2fa', methods=['GET', 'POST'])
 def login_2fa():
@@ -72,21 +72,21 @@ def login_2fa():
     user_id = session['_2fa_user_id']
     if request.method == 'POST':
         password = request.form.get('password'); totp_code = request.form.get('totp_code')
-        if not password or not totp_code: flash('Password and code required.', 'error'); return render_template('quantum_login_2fa_v3.html')
+        if not password or not totp_code: flash('Password and code required.', 'error'); return render_template('quantum_login_2fa_v3.html') # Renders public V3 2FA
         user_data = db.find_user(session['_2fa_username'])
         if not user_data or str(user_data['_id']) != user_id: flash('User validation error.', 'error'); session.clear(); return redirect(url_for('login'))
-        if not encryption.verify_master_password(user_data['password_hash'], password): flash('Invalid password.', 'error'); return render_template('quantum_login_2fa_v3.html')
+        if not encryption.verify_master_password(user_data['password_hash'], password): flash('Invalid password.', 'error'); return render_template('quantum_login_2fa_v3.html') # Renders public V3 2FA
         totp_secret = user_data.get('totp_secret')
         if not totp_secret: flash('2FA secret not found.', 'error'); session.clear(); return redirect(url_for('login'))
         totp = pyotp.TOTP(totp_secret)
-        if not totp.verify(totp_code, valid_window=1): flash('Invalid authenticator code.', 'error'); return render_template('quantum_login_2fa_v3.html')
+        if not totp.verify(totp_code, valid_window=1): flash('Invalid authenticator code.', 'error'); return render_template('quantum_login_2fa_v3.html') # Renders public V3 2FA
         try:
             key = encryption.derive_key(password, user_data['salt'])
             session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username'); session['salt'] = session.pop('_2fa_salt'); session['role'] = session.pop('_2fa_role')
             session['encryption_key'] = key; session['is_2fa_enabled'] = True; session.pop('2fa_required', None); session['2fa_passed'] = True
             flash('Login successful!', 'success'); return redirect(url_for('vault'))
         except Exception as e: print(f"DEBUG Login Err (2FA): {e}"); traceback.print_exc(); flash(f'Login process error after 2FA: {e}', 'error'); session.clear(); return redirect(url_for('login'))
-    return render_template('quantum_login_2fa_v3.html')
+    return render_template('quantum_login_2fa_v3.html') # Renders public V3 2FA
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -110,7 +110,7 @@ def signup():
                     return redirect(url_for('login'))
                 else: flash('Failed to create account.', 'error')
             except Exception as e: print(f"Signup Error: {e}"); traceback.print_exc(); flash(f'Signup error: {e}', 'error')
-    return render_template('quantum_signup_v3.html')
+    return render_template('quantum_signup_v3.html') # Renders public V3 signup
 
 # --- 2FA Management ---
 @app.route('/setup_2fa', methods=['GET', 'POST'])
@@ -130,11 +130,11 @@ def setup_2fa():
             provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
-            return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
+            return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data) # Renders public V3 setup
     secret_key = pyotp.random_base32(); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
     qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
     if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
-    return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
+    return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data) # Renders public V3 setup
 
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
@@ -149,7 +149,9 @@ def disable_2fa():
 @login_required
 @admin_required
 def admin_users():
-    all_users = db.get_all_users(); return render_template('quantum_admin_users.html', users=all_users, current_username=session.get('username'))
+    all_users = db.get_all_users();
+    # Renders the specific V4 admin template
+    return render_template('quantum_admin_users_v4.html', users=all_users, current_username=session.get('username'))
 
 @app.route('/admin/user/status/<user_id>', methods=['POST'])
 @login_required
@@ -189,7 +191,9 @@ def admin_delete_user(user_id):
 def admin_view_user_vault(user_id):
      all_users = db.get_all_users(); target_user = next((u for u in all_users if str(u['_id']) == user_id), None)
      if not target_user: flash('Target user not found.', 'error'); return redirect(url_for('admin_users'))
-     entries = db.get_vault_entries_for_user(user_id); return render_template('quantum_admin_view_vault.html', entries=entries, target_user=target_user, current_username=session.get('username'))
+     entries = db.get_vault_entries_for_user(user_id);
+     # Renders the specific V4 admin vault view template
+     return render_template('quantum_admin_view_vault_v4.html', entries=entries, target_user=target_user, current_username=session.get('username'))
 
 # --- Vault ---
 @app.route('/vault')
@@ -197,6 +201,7 @@ def admin_view_user_vault(user_id):
 def vault():
     user_id = session['user_id']; search_term = request.args.get('search_term', '')
     entries = db.get_vault_entries(user_id, search_term=search_term)
+    # Renders the main V3 vault template
     return render_template('quantum_vault_v3.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username'))
 
 @app.route('/add_entry', methods=['POST'])
@@ -211,12 +216,9 @@ def add_entry():
         try:
             encrypted_password = encryption.encrypt_data(password, encryption_key)
             entry_id = db.add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password)
-            if entry_id:
-                flash('Entry added successfully!', 'success')
-            else:
-                flash('Failed to add entry to database.', 'error')
-        except Exception as e:
-            flash(f'Error adding entry: {e}', 'error')
+            if entry_id: flash('Entry added!', 'success')
+            else: flash('Failed to add entry.', 'error')
+        except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
 # Edit route removed - using modal
@@ -236,8 +238,8 @@ def update_entry(entry_id):
         except Exception as e: flash(f'Error encrypting: {e}', 'error'); return redirect(url_for('vault'))
     else: new_encrypted_password = original_entry_data.get('encrypted_password', b'') # Keep existing
     success = db.update_vault_entry(entry_id, new_laptop_server, new_brand_label, new_entry_username, new_encrypted_password)
-    if success: flash('Entry updated successfully!', 'success')
-    else: flash('Failed update (or no changes made).', 'warning')
+    if success: flash('Entry updated!', 'success')
+    else: flash('Failed update (or no changes).', 'warning')
     return redirect(url_for('vault'))
 
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
@@ -251,16 +253,11 @@ def delete_entry(entry_id):
          if entry_exists: can_delete = True
          else: print(f"Admin {session.get('username')} tried deleting non-existent entry {entry_id}.")
      if can_delete:
-         try:
-             success = db.delete_vault_entry(entry_id);
-             if success:
-                 flash('Entry deleted successfully.', 'success')
-             else:
-                 flash('Failed to delete entry from database.', 'error')
-         except Exception as e:
-             flash(f'Error occurred during deletion: {e}', 'error')
-     else:
-         flash('Cannot delete entry (not found or permission denied).', 'error')
+         try: success = db.delete_vault_entry(entry_id);
+             if success: flash('Entry deleted.', 'success')
+             else: flash('Failed to delete.', 'error')
+         except Exception as e: flash(f'Error deleting: {e}', 'error')
+     else: flash('Cannot delete (not found/permission denied).', 'error')
      return redirect(url_for('vault'))
 
 # --- APIs ---
@@ -303,13 +300,8 @@ def get_entry_details_api(entry_id):
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    try:
-        print("Attempting initial database connection check...")
-        db_conn_check = db.connect_db()
-        if db_conn_check is not None:
-            print("Initial connection successful. Checking indexes...")
-            db.ensure_indexes(); db.close_db()
-            print("Database connection checked and indexes ensured.")
+    try: print("DB Check..."); db_conn_check = db.connect_db();
+        if db_conn_check is not None: print("DB OK. Indexes..."); db.ensure_indexes(); db.close_db(); print("DB Setup OK.")
         else: raise ConnectionError("DB check returned None.")
     except Exception as e: print(f"\nCRITICAL: DB setup failed: {e}\n"); import sys; sys.exit(1)
     print("Starting Flask dev server (Debug Mode)..."); app.run(host='0.0.0.0', port=5000, debug=True)
