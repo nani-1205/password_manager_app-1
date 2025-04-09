@@ -6,8 +6,9 @@
     <div class="content">
 
         {# --- Add Entry Form Section (Initially Hidden) --- #}
-        <div id="add-entry-section" class="add-entry-form-container hidden"> {# <-- ENSURE id and hidden class ARE PRESENT #}
+        <div id="add-entry-section" class="add-entry-form-container hidden">
              <h3><i class="bi bi-plus-circle me-2"></i>Add New Vault Entry</h3>
+             {# Changed IDs within this form to start with add_ #}
              <form method="POST" action="{{ url_for('add_entry') }}" id="add-entry-form">
                 <div class="form-group"> <label for="add_laptop_server" class="form-label">Laptop/Server ID:</label> <input type="text" class="form-input" id="add_laptop_server" name="laptop_server" required> </div>
                 <div class="form-group"> <label for="add_brand_label" class="form-label">Brand/Label <span class="text-muted">(Optional)</span>:</label> <input type="text" class="form-input" id="add_brand_label" name="brand_label"> </div>
@@ -18,13 +19,8 @@
         </div>
         {# --- END Add Entry Section --- #}
 
-
         {# Stored Entries Section Title #}
-        <h2 class="section-title mt-4">
-            Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %}
-        </h2>
-
-        {# Grid Container for Vault Entries #}
+        <h2 class="section-title mt-4"> Stored Entries {% if search_term %}<span style="font-size: 0.8em; color: var(--text-secondary);">(Filtered)</span>{% endif %} </h2>
         <div class="entries-grid">
             {% if entries %}
                 {% for entry in entries %}
@@ -43,10 +39,7 @@
                 </div>
                 {% endfor %}
             {% else %}
-                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;">
-                     {% if search_term %} No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a>
-                     {% else %} Vault is empty. Click "Add Entry" in the sidebar. {% endif %}
-                 </div>
+                 <div class="alert alert-info mt-3" style="grid-column: 1 / -1;"> {% if search_term %} No entries found matching search. <a href="{{ url_for('vault') }}" class="alert-link">Clear</a> {% else %} Vault is empty. Click "Add Entry" in the sidebar. {% endif %} </div>
             {% endif %}
         </div> {# End entries-grid #}
 
@@ -58,5 +51,5 @@
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/vault-v3.js') }}"></script>
-    {# Removed inline JS - all handled by vault-v3.js now #}
+    {# Inline scripts removed - logic moved to vault-v3.js #}
 {% endblock %}
