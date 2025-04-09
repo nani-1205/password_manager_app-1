@@ -1,7 +1,7 @@
 # web_app.py
 import os
 from flask import (Flask, render_template, request, redirect,
-                   url_for, session, flash, jsonify, abort) # Added abort
+                   url_for, session, flash, jsonify, abort)
 from functools import wraps
 import config; import db; import encryption; import utils; import pyotp
 import traceback
@@ -15,31 +15,36 @@ def shutdown_session(exception=None): db.close_db()
 
 # --- Decorator (Unchanged) ---
 def login_required(f):
+    # ... (decorator logic as before) ...
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session: flash('Please log in.', 'warning'); return redirect(url_for('login'))
         if session.get('2fa_required') and not session.get('2fa_passed'):
             if request.endpoint != 'login_2fa': flash('2FA required.', 'warning'); return redirect(url_for('login_2fa'))
-        # Check for encryption key here for routes that absolutely need it AFTER login
-        # Edit/Update/Delete/GetPassword/Add all need it
-        if 'encryption_key' not in session and request.endpoint not in ['login', 'signup', 'logout', 'login_2fa', 'index', 'setup_2fa', 'disable_2fa']:
-             flash('Session expired or invalid. Please log in again.', 'error')
-             session.clear()
-             return redirect(url_for('login'))
+        # Relaxed check here - specific routes will check for encryption_key if needed
+        # if 'encryption_key' not in session and request.endpoint not in [...]:
+        #      flash('Session expired or invalid. Please log in again.', 'error')
+        #      session.clear(); return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
 
 # --- Standard Routes (Index, Logout - Unchanged) ---
 @app.route('/')
 def index():
+    # ... index logic ...
     if 'user_id' in session: return redirect(url_for('vault'))
     return redirect(url_for('login'))
 @app.route('/logout')
-def logout(): session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
+def logout():
+    # ... logout logic ...
+    session.clear(); flash('Logged out.', 'success'); return redirect(url_for('login'))
+
 
 # --- Auth Routes (Login, Login_2FA, Signup - Unchanged) ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # ... login logic ...
     if 'user_id' in session and not session.get('2fa_required'): return redirect(url_for('vault'))
     if request.method == 'POST':
         username = request.form.get('username'); password = request.form.get('password')
@@ -62,6 +67,7 @@ def login():
 
 @app.route('/login/2fa', methods=['GET', 'POST'])
 def login_2fa():
+    # ... login_2fa logic ...
     if '_2fa_user_id' not in session: flash('Please log in first.', 'warning'); return redirect(url_for('login'))
     user_id = session['_2fa_user_id']
     if request.method == 'POST':
@@ -84,6 +90,7 @@ def login_2fa():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    # ... signup logic ...
     if 'user_id' in session: return redirect(url_for('vault'))
     if request.method == 'POST':
         username = request.form.get('username'); password = request.form.get('password'); confirm_password = request.form.get('confirm_password')
@@ -110,8 +117,8 @@ def signup():
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 @login_required
 def setup_2fa():
+    # ... setup_2fa logic ...
     user_id = session['user_id']; username = session['username']
-    # ... (rest of setup_2fa logic) ...
     if request.method == 'POST':
         secret_key = request.form.get('secret_key'); totp_code = request.form.get('totp_code')
         if not secret_key or not totp_code: flash('Code and secret required.', 'error'); return redirect(url_for('setup_2fa'))
@@ -132,10 +139,10 @@ def setup_2fa():
     if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
     return render_template('quantum_setup_2fa_v2.html', secret_key=secret_key, qr_code_data=qr_code_data)
 
-
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
 def disable_2fa():
+    # ... disable_2fa logic ...
     user_id = session['user_id']
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
@@ -145,6 +152,7 @@ def disable_2fa():
 @app.route('/vault')
 @login_required
 def vault():
+    # ... vault logic ...
     user_id = session['user_id']; search_term = request.args.get('search_term', '')
     entries = db.get_vault_entries(user_id, search_term=search_term)
     return render_template('quantum_vault_v2.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username'))
@@ -152,6 +160,7 @@ def vault():
 @app.route('/add_entry', methods=['POST'])
 @login_required
 def add_entry():
+    # ... add_entry logic ...
     laptop_server = request.form.get('laptop_server'); brand_label = request.form.get('brand_label')
     entry_username = request.form.get('entry_username'); password = request.form.get('entry_password')
     user_id = session['user_id']; encryption_key = session.get('encryption_key')
@@ -166,100 +175,94 @@ def add_entry():
         except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-# --- NEW: Edit Entry Route (GET) ---
+# --- Edit/Update Routes ---
 @app.route('/edit_entry/<entry_id>', methods=['GET'])
 @login_required
 def edit_entry(entry_id):
-    """Displays the form to edit an existing vault entry."""
-    user_id = session['user_id']
-    encryption_key = session.get('encryption_key')
-
-    # Fetch the specific entry and verify ownership
+    # ... edit_entry logic (unchanged from previous version) ...
+    user_id = session['user_id']; encryption_key = session.get('encryption_key')
+    if not encryption_key: flash('Session error: Key missing.', 'error'); session.clear(); return redirect(url_for('login'))
     entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
-
-    if not entry_data:
-        flash('Entry not found or you do not have permission to edit it.', 'error')
-        return redirect(url_for('vault'))
-
-    # Decrypt the current password to pre-fill the form
-    decrypted_password = ""
+    if not entry_data: flash('Entry not found or permission denied.', 'error'); return redirect(url_for('vault'))
+    decrypted_password = "";
     if entry_data.get('encrypted_password'):
-        try:
-            decrypted_password = encryption.decrypt_data(entry_data['encrypted_password'], encryption_key)
-            if decrypted_password is None:
-                 flash('Error decrypting existing password. Cannot pre-fill.', 'warning')
-                 decrypted_password = "" # Leave field blank if decryption fails
-        except Exception as e:
-             print(f"Error decrypting password for edit (entry: {entry_id}): {e}")
-             flash('Error preparing entry for editing.', 'error')
-             return redirect(url_for('vault'))
-
-    # Prepare data for the template
-    # Don't pass the encrypted password to the template
-    edit_data = {
-        '_id': str(entry_data['_id']),
-        'laptop_server': entry_data.get('laptop_server', ''),
-        'brand_label': entry_data.get('brand_label', ''),
-        'entry_username': entry_data.get('entry_username', ''),
-        'password': decrypted_password # Pass the decrypted password
-    }
-
+        try: decrypted_password = encryption.decrypt_data(entry_data['encrypted_password'], encryption_key)
+             if decrypted_password is None: flash('Error decrypting password.', 'warning'); decrypted_password = ""
+        except Exception as e: print(f"Edit Decrypt Error: {e}"); flash('Error preparing edit.', 'error'); return redirect(url_for('vault'))
+    edit_data = { '_id': str(entry_data['_id']), 'laptop_server': entry_data.get('laptop_server', ''), 'brand_label': entry_data.get('brand_label', ''), 'entry_username': entry_data.get('entry_username', ''), 'password': decrypted_password }
     return render_template('quantum_edit_entry.html', entry=edit_data)
 
-# --- NEW: Update Entry Route (POST) ---
+# --- UPDATE: update_entry Logic ---
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
 def update_entry(entry_id):
-    """Handles the submission of the edited vault entry."""
+    """Handles the submission of the edited vault entry with relaxed validation."""
     user_id = session['user_id']
     encryption_key = session.get('encryption_key')
 
+    if not encryption_key:
+         flash('Session error: Encryption key missing. Cannot update.', 'error')
+         session.clear()
+         return redirect(url_for('login'))
+
     # Get updated data from the form
     new_laptop_server = request.form.get('laptop_server')
-    new_brand_label = request.form.get('brand_label')
+    new_brand_label = request.form.get('brand_label') # Optional
     new_entry_username = request.form.get('entry_username')
-    new_password = request.form.get('password') # New PLAIN TEXT password from form
+    new_plain_password = request.form.get('password') # Optional, can be empty
 
-    # Validation
-    if not new_laptop_server or not new_entry_username or not new_password:
-         flash('Laptop/Server ID, Username, and Password are required.', 'error')
-         # Redirect back to edit page, need to pass data again or handle differently
-         # For simplicity, redirecting to vault for now on validation error
+    # --- UPDATED VALIDATION ---
+    # Only require Laptop/Server ID and Username for the update itself
+    if not new_laptop_server or not new_entry_username:
+         flash('Laptop/Server ID and Username are required fields.', 'error')
+         # Redirect back to edit page - need to repopulate form data ideally
+         # For simplicity, just redirecting back. A better approach would re-render the edit template.
          return redirect(url_for('edit_entry', entry_id=entry_id))
 
     # SECURITY: Re-verify ownership before updating
-    if not db.find_entry_by_id_and_user(entry_id, user_id):
+    original_entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
+    if not original_entry_data:
          flash('Permission denied or entry not found.', 'error')
          return redirect(url_for('vault'))
 
-    # Encrypt the new password
-    try:
-        new_encrypted_password = encryption.encrypt_data(new_password, encryption_key)
-    except Exception as e:
-        flash(f'Error encrypting new password: {e}', 'error')
-        # Redirect back to edit page
-        return redirect(url_for('edit_entry', entry_id=entry_id))
+    # --- CONDITIONAL PASSWORD UPDATE ---
+    # Check if the user provided a new password in the form
+    if new_plain_password:
+        # If a new password was entered, encrypt it
+        try:
+            new_encrypted_password = encryption.encrypt_data(new_plain_password, encryption_key)
+        except Exception as e:
+            flash(f'Error encrypting new password: {e}', 'error')
+            return redirect(url_for('edit_entry', entry_id=entry_id))
+    else:
+        # If password field was empty, KEEP the existing encrypted password
+        new_encrypted_password = original_entry_data.get('encrypted_password')
+        if not new_encrypted_password: # Handle edge case where original was somehow empty
+            new_encrypted_password = b''
+            flash('Password field left empty, keeping existing (or empty if none existed).', 'warning')
 
-    # Update the entry in the database
+
+    # Update the entry in the database with new/existing data
     success = db.update_vault_entry(
         entry_id,
         new_laptop_server,
-        new_brand_label,
+        new_brand_label, # Pass the new brand label (even if empty)
         new_entry_username,
-        new_encrypted_password
+        new_encrypted_password # Pass the potentially updated or original encrypted password
     )
 
     if success:
         flash('Entry updated successfully!', 'success')
     else:
+        # This could happen if the update operation itself fails in the DB
         flash('Failed to update entry in database.', 'error')
 
     return redirect(url_for('vault')) # Redirect to vault after update attempt
 
-
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
+    # ... delete_entry logic (unchanged from last correct version) ...
      user_id = session['user_id']; entry_data = db.find_entry_by_id_and_user(entry_id, user_id)
      if entry_data:
          try:
@@ -274,11 +277,13 @@ def delete_entry(entry_id):
 @app.route('/generate_password')
 @login_required
 def generate_password_api():
+    # ... generate_password_api logic ...
     try: return jsonify({'password': utils.generate_password(16)})
     except Exception as e: print(f"Gen pass error: {e}"); return jsonify({'error': 'Failed'}), 500
 @app.route('/get_password/<entry_id>')
 @login_required
 def get_password_api(entry_id):
+    # ... get_password_api logic ...
     user_id = session['user_id']; encryption_key = session.get('encryption_key')
     if not encryption_key: return jsonify({'error': 'Key missing'}), 401
     try:
@@ -295,6 +300,7 @@ def get_password_api(entry_id):
 
 # --- Main Execution (Unchanged) ---
 if __name__ == '__main__':
+    # ... startup check and app.run ...
     try:
         print("Attempting initial database connection check...")
         db_conn_check = db.connect_db()
