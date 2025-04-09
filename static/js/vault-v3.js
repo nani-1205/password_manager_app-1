@@ -1,7 +1,7 @@
 // static/js/vault-v3.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Quantum Vault V3 JS Loaded - Final Check");
+    console.log("Quantum Vault V3 JS Loaded - Final Check with Cancel Fix");
 
     // --- API Fetch Helper ---
     async function fetchApi(url, options = {}) {
@@ -16,18 +16,19 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error(`API Fetch Error (${url}):`, error);
             // Optionally show a user-friendly message via flash or alert
-            // alert(`API Error: ${error.message}`); // Simple alert for now
+            // For simplicity in JS, console log is primary feedback here
             throw error; // Re-throw for specific handling if needed
         }
     }
 
     // --- Sidebar Add Entry Toggle ---
-    const addEntrySidebarBtn = document.getElementById('add-entry-sidebar-btn'); // ID on the sidebar <a> tag
-    const addEntrySection = document.getElementById('add-entry-section'); // ID on the form container div in quantum_vault_v3.html
+    // Define these globally within the DOMContentLoaded scope so they ARE available later if needed
+    const addEntrySidebarBtn = document.getElementById('add-entry-sidebar-btn');
+    const addEntrySection = document.getElementById('add-entry-section');
 
     if (addEntrySidebarBtn && addEntrySection) {
         addEntrySidebarBtn.addEventListener('click', function(event) {
-            event.preventDefault(); // MUST prevent default anchor tag behavior
+            event.preventDefault(); // Prevent default anchor tag behavior
             console.log("Sidebar Add Entry Clicked!"); // Debug
 
             // Toggle visibility of the form section using the 'hidden' class
@@ -38,7 +39,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 addEntrySection.classList.remove('hidden');
                 this.classList.add('active'); // Highlight sidebar item
                 // Optional: Scroll to the form
-                 setTimeout(() => addEntrySection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                 setTimeout(() => { // Delay scroll slightly after display change
+                    // Check if the element exists before scrolling
+                    const section = document.getElementById('add-entry-section');
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                 }, 50);
             } else {
                 addEntrySection.classList.add('hidden');
                 this.classList.remove('active'); // Remove highlight
@@ -66,15 +73,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // console.log("Attaching listener to ADD form generate button"); // Debug
             generateBtnAdd.addEventListener('click', async function() {
                 // console.log("ADD form generate button clicked"); // Debug
-                const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
+                const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; this.disabled = true;
                 try {
                     const data = await fetchApi('/generate_password');
-                    if (data.password) {
+                    if (data.password) { // Check if password exists in response
                         passwordFieldAdd.value = data.password; passwordFieldAdd.type = 'text';
-                        if(showHideBtnAdd) { const icon = showHideBtnAdd.querySelector('i'); if(icon) icon.className = 'bi bi-eye-slash-fill'; showHideBtnAdd.title = 'Hide Password'; }
+                        if(showHideBtnAdd) { // Update corresponding show/hide button
+                            const icon = showHideBtnAdd.querySelector('i');
+                            if(icon) icon.className = 'bi bi-eye-slash-fill';
+                            showHideBtnAdd.title = 'Hide Password';
+                        }
                     } else { throw new Error(data.error || 'API did not return a password'); }
                 } catch (error) { alert('Error generating password: ' + error.message); }
-                finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; }
+                finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; } // Restore icon
             });
         } else { if (!generateBtnAdd) console.error("JS Error: #generate-add-btn not found in Add Form"); if (!passwordFieldAdd) console.error("JS Error: #add_entry_password not found in Add Form"); }
 
@@ -88,23 +99,37 @@ document.addEventListener('DOMContentLoaded', function() {
             // console.log("Add Entry Form Show/Hide listener attached."); // Debug
          }
 
-        // --- Cancel Button (Add Form) ---
-        if (cancelBtnAdd && addSection && addSidebarBtn) { // Ensure all elements are found
-            console.log("Attaching listener to ADD form cancel button"); // Debug
-            cancelBtnAdd.addEventListener('click', function() {
-                console.log("Add form cancel button clicked"); // Debug
-                addEntrySection.classList.add('hidden'); // Hide the form SECTION
-                addSidebarBtn.classList.remove('active'); // Deactivate sidebar button
-                const form = addEntrySection.querySelector('form'); // Find form inside section
+        // --- CORRECTED Cancel Button (Add Form) Listener ---
+        if (cancelBtnAdd) { // Only need to check if cancel button itself exists here
+             // console.log("Attaching listener to ADD form cancel button"); // Debug
+             cancelBtnAdd.addEventListener('click', function() {
+                // console.log("Add form cancel button clicked"); // Debug
+
+                // --- Re-select elements needed within this specific handler ---
+                // These elements *should* exist if this listener runs, but re-selecting is safer
+                const sectionToHide = document.getElementById('add-entry-section'); // Get the section again
+                const sidebarButtonToDeactivate = document.getElementById('add-entry-sidebar-btn'); // Get sidebar button again
+                // --- End Re-selection ---
+
+                if (sectionToHide) {
+                    sectionToHide.classList.add('hidden'); // Hide the form SECTION
+                } else {
+                    console.error("Cancel Error: Cannot find #add-entry-section to hide.");
+                }
+
+                if (sidebarButtonToDeactivate) {
+                    sidebarButtonToDeactivate.classList.remove('active'); // Deactivate sidebar button
+                } else {
+                     console.error("Cancel Error: Cannot find #add-entry-sidebar-btn to deactivate.");
+                }
+
+                const form = addEntryForm; // We already have the form element from outer scope
                 if(form) form.reset(); // Reset form fields
             });
         } else {
-            if (!cancelBtnAdd) console.error("JS Error: Add form Cancel button #cancel-add-entry not found");
-            // Check addSection and addSidebarBtn again for robustness, though they should exist if the main toggle works
-            if (!addEntrySection) console.error("JS Error: Add entry section #add-entry-section not found (needed for Cancel)");
-            if (!addSidebarBtn) console.error("JS Error: Sidebar button #add-entry-sidebar-btn not found (needed for Cancel)");
+            console.error("JS Error: Add form Cancel button #cancel-add-entry not found");
         }
-        // --- END Cancel Button (Add Form) ---
+        // --- END CORRECTION ---
 
     } else { console.error("JS Error: Add Entry Form #add-entry-form not found"); }
 
@@ -139,16 +164,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(editModalHelpText) editModalHelpText.style.display = 'block';
 
                 try {
-                    const data = await fetchApi(`/get_entry_details/${entryId}`);
+                    const data = await fetchApi(`/get_entry_details/${entryId}`); // Fetch ALL details
                     editLaptopServerInput.value = data.laptop_server || '';
                     editBrandLabelInput.value = data.brand_label || '';
                     editUsernameInput.value = data.entry_username || '';
-                    editPasswordInput.value = data.password || '';
+                    editPasswordInput.value = data.password || ''; // Pre-fill DECRYPTED password
                     editPasswordInput.placeholder = "Leave blank to keep current password";
-                    editPasswordInput.type = 'password';
+                    editPasswordInput.type = 'password'; // Ensure it starts hidden
                     if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-fill'; showHideEditModalBtn.title = 'Show Password';}
                     editModalTitle.textContent = `Edit: ${data.laptop_server || 'Entry'}`;
-
+                    // Modal is shown via data-bs-toggle
                 } catch (error) {
                     alert(`Failed to load entry details: ${error.message}`);
                     editModalTitle.textContent = 'Edit Vault Entry';
@@ -171,13 +196,13 @@ document.addEventListener('DOMContentLoaded', function() {
                  // console.log("EDIT modal generate button clicked"); // Debug
                  const originalHtml = this.innerHTML; this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
                  try {
-                     const data = await fetchApi('/generate_password');
+                     const data = await fetchApi('/generate_password'); // Re-use API
                      if (data.password) { // Check response
-                         editPasswordInput.value = data.password; editPasswordInput.type = 'text';
-                         if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-slash-fill'; showHideEditModalBtn.title = 'Hide Password'; }
+                        editPasswordInput.value = data.password; editPasswordInput.type = 'text';
+                        if(showHideEditModalBtn) { const icon = showHideEditModalBtn.querySelector('i'); if(icon) icon.className = 'bi bi-eye-slash-fill'; showHideEditModalBtn.title = 'Hide Password'; }
                      } else { throw new Error(data.error || 'API did not return password'); }
                  } catch (error) { alert('Error generating password: ' + error.message); }
-                 finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; }
+                 finally { this.innerHTML = '<i class="bi bi-stars"></i>'; this.disabled = false; } // Restore icon
              });
          } else { if (!generateEditModalBtn) console.error("JS Error: #generate-modal-btn not found"); if (!editPasswordInput) console.error("JS Error: #modal_entry_password not found"); }
 
@@ -200,8 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
              const entryId = this.getAttribute('data-id'); const dotsSpan = card.querySelector('.password-mask');
              const textSpan = card.querySelector('.password-revealed'); const icon = this.querySelector('i');
              if (!dotsSpan || !textSpan || !icon) return;
-             if (textSpan.style.display !== 'none') { /* Hide logic */ textSpan.style.display = 'none'; textSpan.textContent = ''; dotsSpan.style.display = 'inline-block'; icon.className = 'bi bi-eye-fill'; this.title = 'Show Password'; }
-             else { /* Show logic */ if (!textSpan.textContent) { this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
+             if (textSpan.style.display !== 'none') { /* Hide */ textSpan.style.display = 'none'; textSpan.textContent = ''; dotsSpan.style.display = 'inline-block'; icon.className = 'bi bi-eye-fill'; this.title = 'Show Password'; }
+             else { /* Show */ if (!textSpan.textContent) { this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; this.disabled = true;
                      try { const data = await fetchApi(`/get_password/${entryId}`); textSpan.textContent = data.password || '(empty)'; }
                      catch (error) { alert('Error: ' + error.message); this.innerHTML = '<i class="bi bi-eye-fill"></i>'; this.disabled = false; return; }
                      finally { this.disabled = false; } }
