@@ -212,14 +212,14 @@ def add_entry():
             encrypted_password = encryption.encrypt_data(password, encryption_key)
             entry_id = db.add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password)
             if entry_id:
-                flash('Entry added!', 'success')
+                flash('Entry added successfully!', 'success')
             else:
-                flash('Failed to add entry.', 'error')
+                flash('Failed to add entry to database.', 'error')
         except Exception as e:
             flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-# Edit route removed - modal handled by JS
+# Edit route removed (now handled by API + modal)
 
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
@@ -236,8 +236,8 @@ def update_entry(entry_id):
         except Exception as e: flash(f'Error encrypting: {e}', 'error'); return redirect(url_for('vault'))
     else: new_encrypted_password = original_entry_data.get('encrypted_password', b'') # Keep existing
     success = db.update_vault_entry(entry_id, new_laptop_server, new_brand_label, new_entry_username, new_encrypted_password)
-    if success: flash('Entry updated!', 'success')
-    else: flash('Failed update (or no changes).', 'warning')
+    if success: flash('Entry updated successfully!', 'success')
+    else: flash('Failed to update entry (or no changes made).', 'warning')
     return redirect(url_for('vault'))
 
 @app.route('/delete_entry/<entry_id>', methods=['POST'])
@@ -254,7 +254,7 @@ def delete_entry(entry_id):
          try:
              success = db.delete_vault_entry(entry_id);
              if success:
-                 flash('Entry deleted.', 'success')
+                 flash('Entry deleted successfully.', 'success')
              else:
                  flash('Failed to delete entry from database.', 'error')
          except Exception as e:
