@@ -1,4 +1,4 @@
-{% extends "public_base_v3.html" %} {# <-- CORRECTED BASE TEMPLATE #}
+{% extends "public_base_v3.html" %} {# <-- Make sure this uses V3 #}
 
 {% block title %}Setup 2FA{% endblock %}
 
@@ -22,7 +22,7 @@
     <p class="text-center mb-3" style="font-size: 14px; color: var(--text-secondary);">
         Enter the 6-digit code from your app to verify.
     </p>
-     <form method="POST" action="{{ url_for('setup_2fa') }}">
+     <form method="POST" action="{{ url_for('setup_2fa') }}"> {# Use url_for #}
         <input type="hidden" name="secret_key" value="{{ secret_key }}">
         <div class="form-group">
             <label for="totp_code" class="form-label visually-hidden">Verification Code:</label>
@@ -30,5 +30,5 @@
         </div>
         <button type="submit" class="btn btn-primary w-100 mt-3">Verify and Enable 2FA</button>
     </form>
-    <p class="mt-4 text-center"><a href="{{ url_for('vault') }}" style="color: var(--text-secondary);">Cancel Setup</a></p>
+    <p class="mt-4 text-center"><a href="{{ url_for('vault') }}" style="color: var(--text-secondary);">Cancel Setup</a></p> {# Use url_for #}
 {% endblock %}
