@@ -1,0 +1,47 @@
+{% extends "logged_in_base_v2.html" %}
+
+{% block title %}Admin - View Vault for {{ target_user.username }}{% endblock %}
+
+{% block main_content %}
+<div class="content">
+    <h2 class="section-title">
+        Viewing Vault Entries for: {{ target_user.username }}
+        <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-outline float-end"><i class="bi bi-arrow-left"></i> Back to Users</a>
+    </h2>
+    <p class="text-muted mb-4">Note: Passwords are encrypted and cannot be viewed by administrators.</p>
+
+     <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Laptop/Server ID</th>
+                    <th>Brand/Label</th>
+                    <th>Username</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if entries %}
+                    {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.laptop_server }}</td>
+                        <td>{{ entry.brand_label or '-' }}</td>
+                        <td>{{ entry.entry_username }}</td>
+                        <td class="text-center">
+                            {# Admin Delete Entry Form #}
+                            <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline"> {# Maybe needs specific admin delete route? #}
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('DELETE entry \'{{ entry.laptop_server }}\' for user {{ target_user.username }}?');"><i class="bi bi-trash"></i> Delete Entry</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">This user has no vault entries.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

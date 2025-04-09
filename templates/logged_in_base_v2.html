@@ -15,15 +15,18 @@
         </div>
 
         <div class="sidebar-menu">
+            {# Dashboard Link #}
             <a href="{{ url_for('vault') }}" class="menu-item {% if request.endpoint == 'vault' %}active{% endif %}">
                  <div class="icon"><i class="bi bi-grid-1x2-fill"></i></div>
                 <span class="menu-text">Dashboard</span>
             </a>
+            {# Add Entry Toggle #}
             <a href="#" class="menu-item" id="add-entry-sidebar-btn">
                  <div class="icon"><i class="bi bi-plus-circle-fill"></i></div>
                 <span class="menu-text">Add Entry</span>
             </a>
-             {% if is_2fa_enabled %}
+             {# 2FA Management Link #}
+             {% if is_2fa_enabled %} {# Use variable passed from route #}
                  <a href="#" class="menu-item" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
                      <div class="icon"><i class="bi bi-shield-slash-fill" style="color: var(--warning);"></i></div>
                     <span class="menu-text">Disable 2FA</span>
@@ -35,12 +38,25 @@
                     <span class="menu-text">Enable 2FA</span>
                 </a>
              {% endif %}
+
+             {# --- NEW ADMIN LINK --- #}
+             {# Check the 'role' stored in the session #}
+             {% if session.get('role') == 'admin' %}
+                 <hr style="border-color: var(--border); margin: 10px 0;"> {# Separator #}
+                 <a href="{{ url_for('admin_users') }}" class="menu-item {% if request.endpoint.startswith('admin_') %}active{% endif %}">
+                     <div class="icon"><i class="bi bi-people-fill"></i></div>
+                    <span class="menu-text">Manage Users</span>
+                </a>
+             {% endif %}
+             {# --- END ADMIN LINK --- #}
         </div>
 
         <div class="user-profile">
             <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
             <div class="user-info">
                 <div class="user-name">{{ current_username }}</div>
+                 {# Display role if desired #}
+                 {# <div class="user-details text-muted">{{ session.get('role', 'user')|capitalize }}</div> #}
             </div>
              <a href="{{ url_for('logout') }}" class="action-btn-icon-only" title="Logout">
                  <i class="bi bi-box-arrow-right"></i>
@@ -49,7 +65,7 @@
     </div>
 
     <div class="main-content-wrapper">
-        <div class="header"> {# Header now only contains search #}
+        <div class="header">
              <form method="GET" action="{{ url_for('vault') }}" class="search-form">
                 <div class="search-container">
                     <div class="search-icon"><i class="bi bi-search"></i></div>
@@ -60,21 +76,16 @@
                         <i class="bi bi-x-lg"></i>
                     </a>
                 {% else %}
-                     {# Keep search icon button or remove if only Enter is desired #}
-                     <button type="submit" class="btn btn-primary btn-icon btn-search" title="Search">
+                    <button type="submit" class="btn btn-primary btn-icon btn-search" title="Search">
                         <i class="bi bi-search"></i>
                     </button>
                 {% endif %}
             </form>
-            {# --- THIS BUTTON IS REMOVED ---
-            <button class="add-entry-btn" data-bs-toggle="modal" data-bs-target="#addEntryModal">
-                <i class="bi bi-plus-lg"></i> Add Entry
-            </button>
-             --- END REMOVED BUTTON --- #}
+            {# Add Entry button removed from here #}
         </div>
 
          {# Flash Messages Area #}
-         <div class="container-fluid px-4 pt-3">
+         <div class="container-fluid px-4 pt-3" id="flash-message-container"> {# Added ID #}
              {% with messages = get_flashed_messages(with_categories=true) %}
                  {% if messages %}
                      {% for category, message in messages %}
