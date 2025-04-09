@@ -1,54 +1,130 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quantum Vault{% endblock %}</title>
-    {# --- CORRECTED CSS LINK --- #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v3.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-admin-v3.css') }}"> {# Link new CSS #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        /* Styles specific to public pages */
-        .public-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; width: 100%;}
-        .public-card { width: 100%; max-width: 450px; background-color: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px; padding: 30px 35px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .public-title { font-size: 24px; font-weight: 600; color: var(--primary-light); text-align: center; margin-bottom: 25px; }
-        .public-card .form-label { font-size: 13px; }
-        .public-card .form-input { padding: 12px 14px; }
-        .public-card .btn { padding: 12px 16px; font-size: 15px; }
-        .public-card p { font-size: 13px; color: var(--text-secondary); }
-        .public-card a { color: var(--primary-light); font-weight: 500; text-decoration: none; }
-        .public-card a:hover { text-decoration: underline; }
-        /* Ensure flash messages defined in quantum-v3.css appear correctly */
-        .public-card .alert { margin-bottom: 1.5rem; }
-    </style>
 </head>
 <body>
-    <div class="public-container">
-        <div class="public-card">
-            {# Display flashed messages using Bootstrap structure #}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
-                         <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                            {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
-                            {{ message }}
-                            <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            {% block content %}{% endblock %} {# Where login/signup form goes #}
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">QV</div>
+            <div class="logo-text">Quantum Vault</div>
         </div>
-    </div>
 
-    <div class="fixed-logo">
-        {# --- CORRECTED IMAGE SRC --- #}
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
-    </div>
+        {# Determine active page for highlighting #}
+        {% set active_page = request.endpoint %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    {% block scripts %}{% endblock %}
+        <div class="nav-section">
+            <span class="nav-header">Vault</span>
+            <a href="{{ url_for('vault') }}" class="nav-link {% if active_page == 'vault' %}active{% endif %}">
+                <i class="bi bi-shield-lock nav-icon"></i> Vault Entries
+            </a>
+             {# Add Entry Link/Button - Using nav-link style #}
+            <a href="#" class="nav-link" id="add-entry-sidebar-btn"> {# Keep ID for JS #}
+                 <i class="bi bi-plus-circle nav-icon"></i> Add Entry
+            </a>
+        </div>
+
+        <div class="nav-section">
+             <span class="nav-header">Security</span>
+             {# 2FA Link #}
+             {% if is_2fa_enabled %}
+                 <a href="#" class="nav-link" onclick="event.preventDefault(); if(confirm('Disable 2FA?')) document.getElementById('disable-2fa-form').submit();" title="Disable 2FA">
+                     <i class="bi bi-shield-slash nav-icon" style="color: var(--warning);"></i> Disable 2FA
+                 </a>
+                 <form id="disable-2fa-form" method="POST" action="{{ url_for('disable_2fa') }}" style="display: none;"></form>
+             {% else %}
+                  <a href="{{ url_for('setup_2fa') }}" class="nav-link {% if active_page == 'setup_2fa' %}active{% endif %}" title="Enable 2FA">
+                     <i class="bi bi-shield-check nav-icon" style="color: var(--success);"></i> Enable 2FA
+                </a>
+             {% endif %}
+             {# Other security links can go here #}
+        </div>
+
+
+         {% if session.get('role') == 'admin' %}
+            <div class="nav-section">
+                <span class="nav-header">Administration</span>
+                <a href="{{ url_for('admin_users') }}" class="nav-link admin {% if active_page.startswith('admin_') %}active{% endif %}">
+                    <i class="bi bi-people-fill nav-icon"></i> User Management
+                </a>
+                {# Add other admin links here #}
+                {# <a href="#" class="nav-link admin"><i class="bi bi-clipboard-data nav-icon"></i> System Status</a> #}
+                {# <a href="#" class="nav-link admin"><i class="bi bi-file-earmark-text nav-icon"></i> Access Logs</a> #}
+             </div>
+         {% endif %}
+
+        {# Spacer #}
+        <div style="flex-grow: 1;"></div>
+
+        <div class="nav-section">
+             <a href="{{ url_for('logout') }}" class="nav-link" style="color: var(--warning);">
+                 <i class="bi bi-box-arrow-left nav-icon"></i> Logout {# Changed Icon #}
+             </a>
+         </div>
+
+    </div> {# End Sidebar #}
+
+    <!-- Main Content -->
+    <div class="main">
+      <div class="header">
+        <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1> {# Dynamic page title #}
+
+        <div class="header-actions">
+            {# Add User button can be shown conditionally on admin pages #}
+            {% block header_actions %}{% endblock %}
+
+            {# Example Notification Icon #}
+            {# <div class="notification">
+                <button class="toolbar-btn"><i class="bi bi-bell-fill"></i></button>
+                <span class="notification-dot"></span>
+            </div> #}
+
+            {# User Profile Display #}
+            <div class="user-profile">
+                <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
+                <div class="user-info">
+                  <div class="user-name">{{ current_username }}</div>
+                  <div class="user-role">{{ session.get('role', 'user')|capitalize }}</div>
+                </div>
+                {# Maybe add a dropdown here later #}
+            </div>
+        </div>
+      </div>
+
+      {# Main content area for specific pages #}
+      <div class="content">
+            {# Flash Messages Container #}
+            <div id="flash-message-container" class="mb-3">
+                 {% with messages = get_flashed_messages(with_categories=true) %}
+                     {% if messages %}
+                         {% for category, message in messages %}
+                             {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
+                             <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
+                                 {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                                 {{ message }}
+                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button> {# Bootstrap close button #}
+                             </div>
+                         {% endfor %}
+                     {% endif %}
+                 {% endwith %}
+            </div>
+
+            {% block content %}{% endblock %} {# Where page content goes #}
+      </div>
+
+    </div> {# End Main #}
+  </div> {# End Layout #}
+
+  {# Fixed Logo (optional) #}
+  <div class="fixed-logo"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
