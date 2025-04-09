@@ -228,12 +228,12 @@ def update_entry(entry_id):
     if not encryption_key: flash('Session error.', 'error'); session.clear(); return redirect(url_for('login'))
     new_laptop_server = request.form.get('laptop_server'); new_brand_label = request.form.get('brand_label')
     new_entry_username = request.form.get('entry_username'); new_plain_password = request.form.get('password')
-    if not new_laptop_server or not new_entry_username: flash('Laptop/Server ID and Username required.', 'error'); return redirect(url_for('vault')) # Redirect to vault on error
+    if not new_laptop_server or not new_entry_username: flash('Laptop/Server ID and Username required.', 'error'); return redirect(url_for('vault'))
     original_entry_data = db.find_entry_by_id_and_user(entry_id, user_id) # Verify ownership
     if not original_entry_data: flash('Permission denied or entry not found.', 'error'); return redirect(url_for('vault'))
     if new_plain_password: # Only update password if provided
         try: new_encrypted_password = encryption.encrypt_data(new_plain_password, encryption_key)
-        except Exception as e: flash(f'Error encrypting: {e}', 'error'); return redirect(url_for('vault')) # Redirect to vault on error
+        except Exception as e: flash(f'Error encrypting: {e}', 'error'); return redirect(url_for('vault'))
     else: new_encrypted_password = original_entry_data.get('encrypted_password', b'') # Keep existing
     success = db.update_vault_entry(entry_id, new_laptop_server, new_brand_label, new_entry_username, new_encrypted_password)
     if success: flash('Entry updated!', 'success')

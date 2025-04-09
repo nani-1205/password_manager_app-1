@@ -1,0 +1,74 @@
+{% extends "logged_in_base_v3.html" %} {# Use the same base as the vault #}
+
+{% block title %}Admin - User Management{% endblock %}
+
+{% block main_content %}
+<div class="content">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-people-fill me-2"></i> User Management
+        </h2>
+        {# Add actions like "Create User" here later if needed #}
+    </div>
+
+    <div class="user-list"> {# Use the list style defined in quantum-v3.css #}
+        {# Table Header using grid layout from CSS #}
+        <div class="user-list-header">
+            <span>Username</span>
+            <span>Role</span>
+            <span>Status / 2FA</span>
+            <span class="text-center">Actions</span>
+        </div>
+
+        {# User List Items #}
+        {% for user in users %}
+        <div class="user-list-item">
+            {# Username #}
+            <div>{{ user.username }} {% if user.username == session.get('username') %}(You){% endif %}</div>
+
+            {# Role Management #}
+            <div>
+                <form method="POST" action="{{ url_for('admin_change_user_role', user_id=user._id) }}" class="d-inline-flex align-items-center">
+                    {# Use smaller form select for inline look #}
+                    <select name="role" class="form-input form-select-sm py-1 px-2 me-2" style="max-width: 100px; font-size: 0.85rem;" {% if user._id | string == session.get('user_id') %}disabled title="Cannot change own role"{% endif %}>
+                        <option value="user" {% if user.get('role', 'user') == 'user' %}selected{% endif %}>User</option>
+                        <option value="admin" {% if user.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+                    </select>
+                    <button type="submit" class="btn btn-icon btn-icon-sm btn-outline" style="--bs-btn-padding-y: .2rem; --bs-btn-padding-x: .4rem; --bs-btn-font-size: .75rem;" {% if user._id | string == session.get('user_id') %}disabled{% endif %} title="Save Role"><i class="bi bi-save"></i></button>
+                </form>
+            </div>
+
+            {# Status & 2FA Info #}
+            <div>
+                 {# Status Toggle Form #}
+                 <form method="POST" action="{{ url_for('admin_toggle_user_status', user_id=user._id) }}" class="d-inline">
+                     {% if user.get('is_active', True) %}
+                         <button type="submit" class="btn btn-success btn-sm py-0 px-2 me-2" style="font-size: 0.8rem;" {% if user._id | string == session.get('user_id') %}disabled title="Cannot disable self"{% endif %}>Active</button>
+                     {% else %}
+                         <button type="submit" class="btn btn-secondary btn-sm py-0 px-2 me-2" style="font-size: 0.8rem;">Disabled</button>
+                     {% endif %}
+                 </form>
+                 {# 2FA Badge #}
+                 {% if user.get('is_2fa_enabled') %}
+                     <span class="badge rounded-pill text-bg-primary" style="font-size: 0.75rem; background-color: rgba(var(--bs-primary-rgb), 0.2) !important; color: var(--primary-light) !important;">2FA</span>
+                 {% else %}
+                     <span class="badge rounded-pill text-bg-secondary" style="font-size: 0.75rem;">No 2FA</span>
+                 {% endif %}
+            </div>
+
+            {# Actions #}
+            <div class="entry-actions justify-content-center"> {# Use entry-actions for consistent button styling #}
+                <a href="{{ url_for('admin_view_user_vault', user_id=user._id) }}" class="action-btn-icon-only" title="View User's Vault (Metadata)"><i class="bi bi-eye-fill"></i></a>
+                {# Delete User Form #}
+                <form method="POST" action="{{ url_for('admin_delete_user', user_id=user._id) }}" class="d-inline">
+                    <button type="submit" class="action-btn-icon-only delete-btn" {% if user._id | string == session.get('user_id') %}disabled title="Cannot delete self"{% endif %} onclick="return confirm('DELETE user \'{{ user.username }}\' and ALL their vault entries? This cannot be undone!');"><i class="bi bi-trash-fill"></i></button>
+                </form>
+            </div>
+        </div> {# End user-list-item #}
+        {% else %}
+            {# Message if only the admin exists #}
+            <div class="user-list-item" style="grid-column: 1 / -1; justify-content: center; color: var(--text-secondary);">No other users found.</div>
+        {% endfor %}
+    </div> {# End user-list #}
+</div> {# End content #}
+{% endblock %}
