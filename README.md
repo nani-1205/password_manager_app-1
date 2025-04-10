@@ -146,11 +146,6 @@ Quantum Vault is a self-hostable, web-based password manager built with Python (
 *   **Rate Limiting:** Protect login endpoints against brute-force attacks.
 *   **Regular Updates:** Keep Python, Flask, and all dependencies updated.
 
-## Contributing
-
-*(Add contribution guidelines if applicable - e.g., reporting issues, pull requests)*
-
-
 
 ## Authors
 
