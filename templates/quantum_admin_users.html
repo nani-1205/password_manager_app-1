@@ -8,34 +8,41 @@
         <h1 class="page-title">User Management</h1>
         <div class="header-actions">
             <div class="search-bar">
-                 {# Simple search, functionality not implemented in backend search for users yet #}
-                <input class="search-input" type="text" placeholder="Search users...">
+                 {# Add name attribute for potential future search #}
+                <input class="search-input" type="text" name="user_search" placeholder="Search users..." aria-label="Search Users">
                 <span class="search-icon"><i class="bi bi-search"></i></span>
             </div>
-             {# Add User Button - Placeholder for future functionality #}
+             {# Add User Button - Placeholder #}
              {# <button class="btn btn-primary"><i class="bi bi-person-plus-fill"></i> Add User</button> #}
+             {# Replicate user profile from base header #}
+              <div class="user-profile">
+                <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
+                <div class="user-info">
+                  <div class="user-name">{{ current_username }}</div>
+                  <div class="user-role">{{ session.get('role', 'user')|capitalize }}</div>
+                </div>
+              </div>
         </div>
     </div>
 {% endblock %}
 
 {% block main_content %}
 <div class="content">
-    <div class="card"> {# Use card styling from V4 CSS #}
+    <div class="card">
       <div class="card-header">
         <h2 class="card-title">User List</h2>
-        {# Add filtering options here later if needed #}
       </div>
 
       <div class="table-wrapper">
-          <table class="table"> {# Use V4 table styling #}
+          <table class="table">
             <thead>
               <tr>
                 <th>Username</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>2FA</th>
-                {# <th>Last Login</th> #} {# Removed for simplicity #}
-                <th class="text-center">Actions</th> {# Centered Actions #}
+                {# <th>Last Login</th> #}
+                <th class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -44,11 +51,11 @@
                 <td>
                     {{ user.username }}
                     {% if user._id|string == session.get('user_id') %}
-                        <span class="badge bg-secondary ms-1" style="font-size: 0.7em;">You</span> {# Standard Bootstrap badge #}
+                        <span class="badge bg-secondary ms-1" style="font-size: 0.7em;">You</span>
                     {% endif %}
                 </td>
                 <td>
-                    {# Role Change Form - styled using V4 classes #}
+                    {# Role Change Form #}
                     <form method="POST" action="{{ url_for('admin_change_user_role', user_id=user._id) }}" class="form-btn-group">
                         <select name="role" class="role-select form-select form-select-sm" {% if user._id|string == session.get('user_id') %}disabled title="Cannot change own role"{% endif %}>
                             <option value="user" {% if user.get('role', 'user') == 'user' %}selected{% endif %}>User</option>
@@ -58,7 +65,7 @@
                     </form>
                 </td>
                 <td>
-                     {# Status Toggle Form - styled using V4 classes #}
+                     {# Status Toggle Form #}
                      <form method="POST" action="{{ url_for('admin_toggle_user_status', user_id=user._id) }}" class="d-inline">
                          {% if user.get('is_active', True) %}
                              <button type="submit" class="badge badge-success" style="cursor:pointer; border: none;" {% if user._id|string == session.get('user_id') %}disabled title="Cannot disable self"{% endif %}>Active</button>
@@ -68,16 +75,16 @@
                      </form>
                 </td>
                 <td>
-                    {# 2FA Status Badge - styled using V4 classes #}
+                    {# 2FA Status Badge #}
                     {% if user.get('is_2fa_enabled') %}
                          <span class="badge badge-success">Enabled</span>
                     {% else %}
-                         <span class="badge badge-secondary">Disabled</span>
+                         <span class="badge badge-secondary">Disabled</span> {# Use secondary badge for disabled #}
                     {% endif %}
                 </td>
-                {#<td>Apr 9, 2025 - 09:45</td> #} {# Placeholder for Last Login #}
+                {#<td>Apr 9, 2025 - 09:45</td> #}
                 <td class="text-center">
-                  <div class="action-btn-group"> {# Use V4 action group #}
+                  <div class="action-btn-group">
                       <a href="{{ url_for('admin_view_user_vault', user_id=user._id) }}" class="action-btn" title="View User's Vault (Metadata)"><i class="bi bi-eye"></i></a>
                       <form method="POST" action="{{ url_for('admin_delete_user', user_id=user._id) }}" class="d-inline">
                         <button type="submit" class="action-btn action-danger" style="color: var(--danger);" {% if user._id|string == session.get('user_id') %}disabled title="Cannot delete self"{% endif %} onclick="return confirm('DELETE user \'{{ user.username }}\' and ALL their vault entries?');"><i class="bi bi-trash"></i></button>

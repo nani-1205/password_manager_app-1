@@ -7,6 +7,14 @@
         <h1 class="page-title">View Vault: {{ target_user.username }} {% if target_user.get('role') == 'admin' %}<span class="badge badge-admin ms-2">Admin</span>{% endif %}</h1>
         <div class="header-actions">
             <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
+             {# Replicate user profile from base header #}
+              <div class="user-profile">
+                <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
+                <div class="user-info">
+                  <div class="user-name">{{ current_username }}</div>
+                  <div class="user-role">{{ session.get('role', 'user')|capitalize }}</div>
+                </div>
+              </div>
         </div>
     </div>
 {% endblock %}
@@ -15,8 +23,8 @@
 <div class="content">
      <p class="text-muted mb-4" style="font-size: 0.9em;">Note: Passwords are encrypted and cannot be viewed by administrators.</p>
 
-    <div class="card"> {# Wrap table in card #}
-        <div class="card-header"><h2 class="card-title">Vault Entries</h2></div>
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Vault Entries for {{ target_user.username }}</h2></div>
          <div class="table-wrapper">
             <table class="table"> {# Use V4 table styles #}
                 <thead>
