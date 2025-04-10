@@ -1,96 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"> {# Light theme base #}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quantum Vault Admin{% endblock %}</title>
+    {# Link the V4 Admin CSS file #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-admin-v4.css') }}">
+    {# Using Bootstrap Icons via CDN #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
     <div class="layout">
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">QV</div>
-                <div class="logo-text">Quantum Vault</div>
-            </div>
-
-            {# --- Sidebar Navigation --- #}
-            <div class="nav-section">
-                <span class="nav-header">Vault</span>
-                 <a href="{{ url_for('vault') }}" class="nav-link {% if request.endpoint == 'vault' %}active{% endif %}">
-                   <i class="bi bi-grid-fill nav-icon"></i> Dashboard
-                 </a>
-            </div>
-
-            <div class="nav-section">
-                <span class="nav-header">Administration</span>
-                <a href="{{ url_for('admin_users') }}" class="nav-link admin {% if request.endpoint.startswith('admin_') %}active{% endif %}">
-                    <i class="bi bi-people-fill nav-icon"></i> User Management
-                </a>
-                 {# Add other admin links here #}
-                 {#
-                 <a href="#" class="nav-link admin"> <i class="bi bi-activity nav-icon"></i> System Status </a>
-                 <a href="#" class="nav-link admin"> <i class="bi bi-journal-text nav-icon"></i> Access Logs </a>
-                 #}
-            </div>
-
-             {# Spacer #}
-             <div style="flex-grow: 1;"></div>
-
-             {# User Profile at bottom #}
-             <div class="user-profile" style="padding: 1rem; border-top: 1px solid var(--border);">
-                <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div>
-                <div class="user-info">
-                    <div class="user-name">{{ current_username }}</div>
-                    <div class="user-role" style="color: var(--gray); font-size: 12px;">{{ session.get('role', 'user')|capitalize }}</div>
-                </div>
-                 <a href="{{ url_for('logout') }}" class="action-btn" style="background: transparent; border: none;" title="Logout">
-                     <i class="bi bi-box-arrow-right" style="font-size: 1.2em; color: var(--sidebar-text);"></i>
-                 </a>
-            </div>
+            <div class="logo"> <div class="logo-icon">QV</div> <div class="logo-text">Quantum Vault</div> </div>
+            <div class="nav-section"> <span class="nav-header">Vault</span> <a href="{{ url_for('vault') }}" class="nav-link {% if request.endpoint == 'vault' %}active{% endif %}"> <i class="bi bi-key-fill nav-icon"></i> <span>Vault Home</span> </a> </div>
+            {% if session.get('role') == 'admin' %}
+            <div class="nav-section"> <span class="nav-header">Administration</span> <a href="{{ url_for('admin_users') }}" class="nav-link admin {% if request.endpoint.startswith('admin_') %}active{% endif %}"> <i class="bi bi-people-fill nav-icon"></i> <span>User Management</span> </a> </div>
+            {% endif %}
+            <div style="flex-grow: 1;"></div>
+             <div class="user-profile" style="padding: 1rem; border-top: 1px solid var(--border);"> <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div> <div class="user-info"> <div class="user-name" style="color: var(--sidebar-text-hover);">{{ current_username }}</div> <div class="user-role" style="color: var(--gray); font-size: 12px;">{{ session.get('role', 'user')|capitalize }}</div> </div> <a href="{{ url_for('logout') }}" class="action-btn" style="background: transparent; border: none;" title="Logout"> <i class="bi bi-box-arrow-right" style="font-size: 1.2em; color: var(--sidebar-text);"></i> </a> </div>
         </div> <!-- End Sidebar -->
-
         <!-- Main Content Area -->
         <div class="main">
-             {# Block for the specific page header #}
-             {% block page_header %}
-                 {# Default header if page doesn't define one #}
-                 <div class="header">
-                    <h1 class="page-title">Admin Area</h1>
-                 </div>
-             {% endblock %}
-
-             {# Container for flash messages #}
-             <div id="flash-message-container" style="padding: 0 2rem;"> {# Consistent padding #}
-                 {% with messages = get_flashed_messages(with_categories=true) %}
-                     {% if messages %}
-                         {% for category, message in messages %}
-                             {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
-                             <div class="alert alert-{{ alert_class }} alert-dismissible fade show mt-3" role="alert" style="background-color: rgba(var(--bs-{{alert_class}}-rgb), 0.1); color: var(--{{alert_class}}); border-color: var(--{{alert_class}}) !important; display: flex; align-items: center; font-size: 14px; border-left-width: 4px !important;">
-                                 {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill me-2"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
-                                 <span>{{ message }}</span>
-                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="padding: 0.75rem 1rem; filter: brightness(150%);"></button>
-                             </div>
-                         {% endfor %}
-                     {% endif %}
-                 {% endwith %}
-             </div>
-
-             {# Block for the main page content #}
+             {% block page_header %} <div class="header"> <h1 class="page-title">Admin Area</h1> <div class="header-actions"> <div class="user-profile"> <div class="user-avatar">{{ current_username[0]|upper if current_username else '?' }}</div> <div class="user-info"> <div class="user-name">{{ current_username }}</div> <div class="user-role">{{ session.get('role', 'user')|capitalize }}</div> </div> </div> </div> </div> {% endblock %}
+             <div id="flash-message-container" style="padding: 0 2rem;"> {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %} {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %} <div class="alert alert-{{ alert_class }} alert-dismissible fade show mt-3" role="alert"> {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill me-2"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %} <span>{{ message }}</span> <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button> {# Use Checkmark #} </div> {% endfor %} {% endif %} {% endwith %} </div>
              {% block main_content %}{% endblock %}
-
         </div> <!-- End Main -->
-
-         {# Fixed Logo - Optional #}
-         <div class="fixed-logo">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
-        </div>
-
+         <div class="fixed-logo"> <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo"> </div>
     </div> {# End Layout #}
-
-    <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     {% block scripts %}{% endblock %}
 </body>
