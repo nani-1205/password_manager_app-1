@@ -3,59 +3,33 @@ import os
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify, abort)
 from functools import wraps
-import config # Reads .env for settings
-import db     # Database interaction functions
-import encryption # Hashing and encryption functions
-import utils    # Utility functions (password gen, QR code)
-import pyotp    # For TOTP 2FA generation/verification
-import traceback # For detailed error logging
+import config; import db; import encryption; import utils; import pyotp
+import traceback # For debugging errors
 
-# Initialize Flask App
 app = Flask(__name__)
-# Load Secret Key from config (read from .env)
 app.secret_key = config.SECRET_KEY
-if not app.secret_key:
-     # Critical: App cannot run securely without a secret key for sessions
-     raise ValueError("FLASK_SECRET_KEY is not set in config or environment variables!")
+if not app.secret_key: raise ValueError("FLASK_SECRET_KEY not set")
 
-# Close DB connection when app context tears down
 @app.teardown_appcontext
-def shutdown_session(exception=None):
-    db.close_db()
+def shutdown_session(exception=None): db.close_db()
 
 # --- Decorators ---
 def login_required(f):
-    """Decorator to ensure user is logged in and 2FA is passed (if required)."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # 1. Basic Login Check: Is user_id in session?
-        if 'user_id' not in session:
-            flash('Please log in to access this page.', 'warning')
-            return redirect(url_for('login'))
-
-        # 2. 2FA Check: If 2FA is required for this session, has it been passed?
+        if 'user_id' not in session: flash('Please log in.', 'warning'); return redirect(url_for('login'))
         if session.get('2fa_required') and not session.get('2fa_passed'):
-            # Allow access only to the 2FA verification page itself to prevent loops
-            if request.endpoint != 'login_2fa':
-                flash('Two-factor authentication is required.', 'warning')
-                return redirect(url_for('login_2fa'))
-
-        # 3. Encryption Key Check: Does the route need the decryption key, and is it present?
-        # Routes that manipulate or view decrypted vault data need the key.
+            if request.endpoint != 'login_2fa': flash('2FA required.', 'warning'); return redirect(url_for('login_2fa'))
+        # Check encryption key for routes that need decryption/encryption AFTER full login
         needs_key = request.endpoint in [
             'vault', 'add_entry', 'update_entry', 'delete_entry', # Vault operations
             'get_password_api', 'get_entry_details_api' # APIs needing decryption
-            # Add other routes here if they perform encryption/decryption
         ]
-        # Admin routes viewing metadata might not need the *user's* key directly here,
-        # but they are protected by @admin_required which implies prior login anyway.
+        # Admin routes viewing metadata might not need the *user's* key directly here.
         if needs_key and 'encryption_key' not in session:
              print(f"DEBUG: Encryption key missing for endpoint '{request.endpoint}'. Session: {session}") # Debug log
              flash('Session invalid or key missing. Please log in again.', 'error')
-             session.clear(); # Clear invalid session
-             return redirect(url_for('login'))
-
-        # If all checks pass, execute the original route function
+             session.clear(); return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -75,8 +49,7 @@ def admin_required(f):
 @app.route('/')
 def index():
     """Redirects authenticated users to vault, others to login."""
-    if 'user_id' in session:
-        return redirect(url_for('vault'))
+    if 'user_id' in session: return redirect(url_for('vault'))
     return redirect(url_for('login'))
 
 @app.route('/logout')
@@ -90,126 +63,66 @@ def logout():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Handles user login (Stage 1: Password Check)."""
-    # Redirect if already fully logged in
-    if 'user_id' in session and not session.get('2fa_required'):
-        return redirect(url_for('vault'))
+    if 'user_id' in session and not session.get('2fa_required'): return redirect(url_for('vault')) # Already fully logged in
 
     if request.method == 'POST':
         username = request.form.get('username'); password = request.form.get('password')
-        if not username or not password:
-            flash('Username and password are required.', 'error')
-            return render_template('quantum_login_v3.html') # Use V3 template name
-
-        user_data = db.find_user(username) # Fetches all necessary fields
-
-        # Verify user exists and password matches hash
+        if not username or not password: flash('Username and password required.', 'error'); return render_template('quantum_login_v3.html')
+        user_data = db.find_user(username)
         if user_data and encryption.verify_master_password(user_data['password_hash'], password):
-            # Check if the account is marked as active
-             if not user_data.get('is_active', True): # Default to active if field missing
-                  flash('Your account is disabled. Please contact an administrator.', 'error')
-                  return render_template('quantum_login_v3.html') # Use V3 template name
-
-             # Password correct! Store temporary info before 2FA check or final login
-             session['_2fa_user_id'] = str(user_data['_id'])
-             session['_2fa_username'] = user_data['username']
-             session['_2fa_salt'] = user_data['salt']
-             session['_2fa_role'] = user_data.get('role', 'user') # Get role
-
-             # Check if 2FA is enabled for this user in the database
+             if not user_data.get('is_active', True): flash('Account disabled.', 'error'); return render_template('quantum_login_v3.html')
+             # Password correct, store temp info
+             session['_2fa_user_id'] = str(user_data['_id']); session['_2fa_username'] = user_data['username']; session['_2fa_salt'] = user_data['salt']; session['_2fa_role'] = user_data.get('role', 'user')
              if user_data.get('is_2fa_enabled'):
-                 session['2fa_required'] = True # Mark session as needing 2FA step
-                 session.pop('_2fa_passed', None) # Clear previous 2FA pass status
-                 return redirect(url_for('login_2fa')) # Redirect to 2FA input page
+                 session['2fa_required'] = True; session.pop('_2fa_passed', None); return redirect(url_for('login_2fa')) # Go to 2FA step
              else:
-                 # No 2FA needed, complete login process now
+                 # No 2FA, complete login
                  try:
                      key = encryption.derive_key(password, user_data['salt'])
-                     # Promote temporary session vars to final session vars
-                     session['user_id'] = session.pop('_2fa_user_id')
-                     session['username'] = session.pop('_2fa_username')
-                     session['salt'] = session.pop('_2fa_salt')
-                     session['role'] = session.pop('_2fa_role')
-                     session['encryption_key'] = key # Store the derived key
-                     session['is_2fa_enabled'] = False # Reflect current status
-                     session.pop('2fa_required', None); session.pop('_2fa_passed', None) # Clean up flags
-                     flash('Login successful!', 'success')
-                     return redirect(url_for('vault')) # Redirect to the main vault page
-                 except Exception as e:
-                     # Catch errors during key derivation or final session setting
-                     print(f"DEBUG Login Err (no 2FA): {e}"); traceback.print_exc()
-                     flash(f'Login process error: {e}', 'error')
-                     session.clear(); return render_template('quantum_login_v3.html') # Use V3 template name
-        else:
-            # Invalid username or password provided
-            flash('Invalid username or password.', 'error')
-            session.clear()
-
-    # Clear temporary flags on GET request to login page
-    session.pop('_2fa_user_id', None); session.pop('_2fa_username', None); session.pop('_2fa_salt', None);
-    session.pop('2fa_required', None); session.pop('_2fa_passed', None)
-    return render_template('quantum_login_v3.html') # Use V3 template name
+                     session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username'); session['salt'] = session.pop('_2fa_salt'); session['role'] = session.pop('_2fa_role')
+                     session['encryption_key'] = key; session['is_2fa_enabled'] = False; session.pop('2fa_required', None); session.pop('_2fa_passed', None)
+                     flash('Login successful!', 'success'); return redirect(url_for('vault'))
+                 except Exception as e: print(f"DEBUG Login Err (no 2FA): {e}"); traceback.print_exc(); flash(f'Login process error: {e}', 'error'); session.clear(); return render_template('quantum_login_v3.html')
+        else: flash('Invalid username or password.', 'error'); session.clear() # Invalid credentials
+    # GET request or failed POST
+    session.pop('_2fa_user_id', None); session.pop('_2fa_username', None); session.pop('_2fa_salt', None); session.pop('2fa_required', None); session.pop('_2fa_passed', None)
+    return render_template('quantum_login_v3.html')
 
 @app.route('/login/2fa', methods=['GET', 'POST'])
 def login_2fa():
     """Handles user login (Stage 2: 2FA Verification)."""
-    if '_2fa_user_id' not in session:
-        flash('Please enter your username and password first.', 'warning')
-        return redirect(url_for('login'))
-
+    if '_2fa_user_id' not in session: flash('Please log in first.', 'warning'); return redirect(url_for('login'))
     user_id = session['_2fa_user_id']
-
     if request.method == 'POST':
         password = request.form.get('password'); totp_code = request.form.get('totp_code')
-        if not password or not totp_code:
-            flash('Password and authenticator code are required.', 'error')
-            return render_template('quantum_login_2fa_v3.html') # Use V3 template name
-
+        if not password or not totp_code: flash('Password and code required.', 'error'); return render_template('quantum_login_2fa_v3.html')
         user_data = db.find_user(session['_2fa_username'])
-        if not user_data or str(user_data['_id']) != user_id:
-            flash('User validation error. Please try logging in again.', 'error')
-            session.clear(); return redirect(url_for('login'))
-
-        if not encryption.verify_master_password(user_data['password_hash'], password):
-            flash('Invalid password provided.', 'error')
-            return render_template('quantum_login_2fa_v3.html') # Use V3 template name
-
+        if not user_data or str(user_data['_id']) != user_id: flash('User validation error.', 'error'); session.clear(); return redirect(url_for('login'))
+        if not encryption.verify_master_password(user_data['password_hash'], password): flash('Invalid password.', 'error'); return render_template('quantum_login_2fa_v3.html')
         totp_secret = user_data.get('totp_secret')
-        if not totp_secret:
-            flash('2FA secret not found for user. Cannot verify code.', 'error')
-            session.clear(); return redirect(url_for('login'))
-
+        if not totp_secret: flash('2FA secret not found.', 'error'); session.clear(); return redirect(url_for('login'))
         totp = pyotp.TOTP(totp_secret)
-        if not totp.verify(totp_code, valid_window=1):
-            flash('Invalid authenticator code.', 'error')
-            return render_template('quantum_login_2fa_v3.html') # Use V3 template name
-
-        # --- Both factors verified ---
+        if not totp.verify(totp_code, valid_window=1): flash('Invalid authenticator code.', 'error'); return render_template('quantum_login_2fa_v3.html')
+        # Both password and TOTP verified
         try:
             key = encryption.derive_key(password, user_data['salt'])
-            session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username')
-            session['salt'] = session.pop('_2fa_salt'); session['role'] = session.pop('_2fa_role')
-            session['encryption_key'] = key; session['is_2fa_enabled'] = True
-            session.pop('2fa_required', None); session['2fa_passed'] = True
-            flash('Login successful!', 'success')
-            return redirect(url_for('vault'))
-        except Exception as e:
-            print(f"DEBUG Login Err (2FA): {e}"); traceback.print_exc()
-            flash(f'Login process error after 2FA: {e}', 'error')
-            session.clear(); return redirect(url_for('login'))
-
-    return render_template('quantum_login_2fa_v3.html') # Use V3 template name
+            session['user_id'] = session.pop('_2fa_user_id'); session['username'] = session.pop('_2fa_username'); session['salt'] = session.pop('_2fa_salt'); session['role'] = session.pop('_2fa_role')
+            session['encryption_key'] = key; session['is_2fa_enabled'] = True; session.pop('2fa_required', None); session['2fa_passed'] = True
+            flash('Login successful!', 'success'); return redirect(url_for('vault'))
+        except Exception as e: print(f"DEBUG Login Err (2FA): {e}"); traceback.print_exc(); flash(f'Login process error after 2FA: {e}', 'error'); session.clear(); return redirect(url_for('login'))
+    return render_template('quantum_login_2fa_v3.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Handles new user registration."""
-    if 'user_id' in session: return redirect(url_for('vault'))
+    if 'user_id' in session: return redirect(url_for('vault')) # Redirect if already logged in
     if request.method == 'POST':
         username = request.form.get('username'); password = request.form.get('password'); confirm_password = request.form.get('confirm_password')
         error = None
         if not username or not password or not confirm_password: error = 'All fields required.'
         elif password != confirm_password: error = 'Passwords do not match.'
-        elif len(password) < 8: error = 'Password min 8 characters.'
-        elif db.find_user(username): error = 'Username exists.'
+        elif len(password) < 8: error = 'Password must be at least 8 characters.'
+        elif db.find_user(username): error = 'Username already exists.'
         if error: flash(error, 'error')
         else:
             try:
@@ -217,12 +130,12 @@ def signup():
                 user_id = db.add_user(username, hashed_password, salt) # Defaults role='user', first becomes admin
                 if user_id:
                     flash('Account created! Please log in.', 'success');
-                    try: db.ensure_indexes()
+                    try: db.ensure_indexes() # Attempt to ensure indexes exist
                     except Exception as idx_e: print(f"Warning: Signup index error: {idx_e}")
                     return redirect(url_for('login'))
-                else: flash('Failed to create account (database issue or unexpected error).', 'error')
+                else: flash('Failed to create account.', 'error') # Could be DB error or duplicate
             except Exception as e: print(f"Signup Error: {e}"); traceback.print_exc(); flash(f'Signup error: {e}', 'error')
-    return render_template('quantum_signup_v3.html') # Use V3 template name
+    return render_template('quantum_signup_v3.html')
 
 # --- 2FA Management ---
 @app.route('/setup_2fa', methods=['GET', 'POST'])
@@ -239,23 +152,23 @@ def setup_2fa():
                 flash('2FA enabled successfully!', 'success'); session['is_2fa_enabled'] = True; return redirect(url_for('vault'))
             else: flash('Failed to save 2FA settings.', 'error'); return redirect(url_for('setup_2fa'))
         else:
-            flash('Invalid verification code.', 'error') # Let user retry with same QR/Key
+            flash('Invalid verification code.', 'error'); # Let user retry with same QR/Key
             provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
             qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
             if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
-            return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data) # Use V3 template name
+            return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
     # GET request: Generate new secret and display QR
     secret_key = pyotp.random_base32(); provisioning_uri = pyotp.totp.TOTP(secret_key).provisioning_uri(name=username, issuer_name=config.TOTP_ISSUER_NAME)
     qr_code_data = utils.generate_qr_code_base64(provisioning_uri)
     if not qr_code_data: flash('Error generating QR code.', 'error'); return redirect(url_for('vault'))
-    return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data) # Use V3 template name
+    return render_template('quantum_setup_2fa_v3.html', secret_key=secret_key, qr_code_data=qr_code_data)
 
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
 def disable_2fa():
     """Disables 2FA for the logged-in user."""
+    # SECURITY TODO: Add password confirmation here
     user_id = session['user_id']
-    # SECURITY TODO: Require password confirmation here
     if db.disable_user_2fa(user_id): flash('2FA disabled.', 'success'); session['is_2fa_enabled'] = False
     else: flash('Failed to disable 2FA.', 'error')
     return redirect(url_for('vault'))
@@ -267,7 +180,8 @@ def disable_2fa():
 def admin_users():
     """Displays the NEW V4 user management page."""
     all_users = db.get_all_users()
-    return render_template('quantum_admin_users_v4.html', users=all_users, current_username=session.get('username')) # Use V4 template
+    # RENDER V4 ADMIN TEMPLATE
+    return render_template('quantum_admin_users_v4.html', users=all_users, current_username=session.get('username'))
 
 @app.route('/admin/user/status/<user_id>', methods=['POST'])
 @login_required
@@ -314,7 +228,8 @@ def admin_view_user_vault(user_id):
      all_users = db.get_all_users(); target_user = next((u for u in all_users if str(u['_id']) == user_id), None)
      if not target_user: flash('Target user not found.', 'error'); return redirect(url_for('admin_users'))
      entries = db.get_vault_entries_for_user(user_id); # Gets metadata only
-     return render_template('quantum_admin_view_vault.html', entries=entries, target_user=target_user, current_username=session.get('username')) # Use V4 name if created
+     # RENDER V4 ADMIN TEMPLATE
+     return render_template('quantum_admin_view_vault.html', entries=entries, target_user=target_user, current_username=session.get('username'))
 
 # --- Vault ---
 @app.route('/vault')
@@ -323,7 +238,8 @@ def vault():
     """Displays the main vault page with user's entries."""
     user_id = session['user_id']; search_term = request.args.get('search_term', '')
     entries = db.get_vault_entries(user_id, search_term=search_term) # Gets own entries
-    return render_template('quantum_vault_v3.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username')) # Use V3 name
+    # RENDER V3 VAULT TEMPLATE
+    return render_template('quantum_vault_v3.html', entries=entries, search_term=search_term, is_2fa_enabled=session.get('is_2fa_enabled'), current_username=session.get('username'))
 
 @app.route('/add_entry', methods=['POST'])
 @login_required
@@ -338,15 +254,12 @@ def add_entry():
         try:
             encrypted_password = encryption.encrypt_data(password, encryption_key)
             entry_id = db.add_vault_entry(user_id, laptop_server, brand_label, entry_username, encrypted_password)
-            if entry_id:
-                flash('Entry added successfully!', 'success')
-            else:
-                flash('Failed to add entry to database.', 'error')
-        except Exception as e:
-            flash(f'Error adding entry: {e}', 'error')
+            if entry_id: flash('Entry added successfully!', 'success')
+            else: flash('Failed to add entry to database.', 'error')
+        except Exception as e: flash(f'Error adding entry: {e}', 'error')
     return redirect(url_for('vault'))
 
-# Edit route removed (handled by modal)
+# Edit route removed - using modal
 
 @app.route('/update_entry/<entry_id>', methods=['POST'])
 @login_required
@@ -452,5 +365,5 @@ if __name__ == '__main__':
         else: raise ConnectionError("DB check returned None.")
     except Exception as e: print(f"\nCRITICAL: DB setup failed: {e}\n"); import sys; sys.exit(1)
     print("Starting Flask dev server (Debug Mode)...");
-    # Use debug=True ONLY for development!
+    # debug=True is ONLY for development!
     app.run(host='0.0.0.0', port=5000, debug=True)

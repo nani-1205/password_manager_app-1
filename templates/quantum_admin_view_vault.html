@@ -1,30 +1,55 @@
-{% extends "logged_in_base_v3.html" %} {# Use V3 base #}
+{% extends "logged_in_base_v4.html" %} {# <-- EXTENDS THE NEW V4 ADMIN BASE #}
+
 {% block title %}Admin - View Vault for {{ target_user.username }}{% endblock %}
+
+{% block page_header %}
+    <div class="header">
+        <h1 class="page-title">View Vault: {{ target_user.username }} {% if target_user.get('role') == 'admin' %}<span class="badge badge-admin ms-2">Admin</span>{% endif %}</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
+        </div>
+    </div>
+{% endblock %}
+
 {% block main_content %}
 <div class="content">
-    <div class="section-header">
-        <h2 class="section-title"> <i class="bi bi-key-fill me-2"></i> Viewing Vault: {{ target_user.username }} {% if target_user.get('role') == 'admin' %}<span class="admin-badge">Admin</span>{% endif %} </h2>
-         <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
-    </div>
      <p class="text-muted mb-4" style="font-size: 0.9em;">Note: Passwords are encrypted and cannot be viewed by administrators.</p>
+
     <div class="card"> {# Wrap table in card #}
-     <div class="table-wrapper">
-        <table class="table">
-            <thead class="table-light"> <tr> <th>Laptop/Server ID</th> <th>Brand/Label</th> <th>Username</th> <th class="text-center">Actions</th> </tr> </thead>
-            <tbody>
-                {% if entries %}
-                    {% for entry in entries %}
+        <div class="card-header"><h2 class="card-title">Vault Entries</h2></div>
+         <div class="table-wrapper">
+            <table class="table"> {# Use V4 table styles #}
+                <thead>
                     <tr>
-                        <td>{{ entry.laptop_server }}</td>
-                        <td>{{ entry.brand_label or '-' }}</td>
-                        <td>{{ entry.entry_username }}</td>
-                        <td class="text-center"> <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline"> <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('ADMIN ACTION: Delete entry \'{{ entry.laptop_server }}\' for user {{ target_user.username }}?');"><i class="bi bi-trash"></i> Delete Entry</button> </form> </td>
+                        <th>Laptop/Server ID</th>
+                        <th>Brand/Label</th>
+                        <th>Username</th>
+                        <th class="text-center">Actions</th>
                     </tr>
-                    {% endfor %}
-                {% else %} <tr> <td colspan="4" class="text-center text-muted py-4">This user has no vault entries.</td> </tr> {% endif %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% if entries %}
+                        {% for entry in entries %}
+                        <tr>
+                            <td>{{ entry.laptop_server }}</td>
+                            <td>{{ entry.brand_label or '-' }}</td>
+                            <td>{{ entry.entry_username }}</td>
+                            <td class="text-center">
+                                {# Admin Delete Entry Form - styled using V4 classes #}
+                                <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('ADMIN ACTION: Delete entry \'{{ entry.laptop_server }}\' for user {{ target_user.username }}?');"><i class="bi bi-trash"></i> Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">This user has no vault entries.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
-   </div>
 </div>
 {% endblock %}
