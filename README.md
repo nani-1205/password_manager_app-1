@@ -58,7 +58,7 @@ Quantum Vault is a self-hostable, web-based password manager built with Python (
 1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/nani-1205/password_manager_app-1.git
-    cd password_manager_web # Or your project directory name
+    cd password_manager_web_-1 # Or your project directory name
     ```
 
 2.  **Create Virtual Environment:**
