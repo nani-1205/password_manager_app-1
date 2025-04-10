@@ -1,45 +1,30 @@
-{% extends "logged_in_base_v3.html" %}
-
+{% extends "logged_in_base_v3.html" %} {# Use V3 base #}
 {% block title %}Admin - View Vault for {{ target_user.username }}{% endblock %}
-
 {% block main_content %}
 <div class="content">
     <div class="section-header">
-        <h2 class="section-title">
-            <i class="bi bi-key-fill me-2"></i> Viewing Vault: {{ target_user.username }} {% if target_user.get('role') == 'admin' %}<span class="admin-badge">Admin</span>{% endif %}
-        </h2>
-         <a href="{{ url_for('admin_users') }}" class="btn btn-outline"><i class="bi bi-arrow-left"></i> Back to Users</a>
+        <h2 class="section-title"> <i class="bi bi-key-fill me-2"></i> Viewing Vault: {{ target_user.username }} {% if target_user.get('role') == 'admin' %}<span class="admin-badge">Admin</span>{% endif %} </h2>
+         <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
     </div>
      <p class="text-muted mb-4" style="font-size: 0.9em;">Note: Passwords are encrypted and cannot be viewed by administrators.</p>
-
-    {# Use entry-list style #}
-    <div class="entry-list">
-        {% if entries %}
-            {% for entry in entries %}
-            <div class="password-entry"> {# Use same card style #}
-                 <div class="entry-icon">
-                    {{ (entry.brand_label or entry.laptop_server or '?')[0]|upper }}
-                </div>
-                <div class="entry-details">
-                    <div class="entry-title">{{ entry.laptop_server }}</div>
-                    {% if entry.brand_label %}<div class="entry-brand">{{ entry.brand_label }}</div>{% endif %}
-                    <div class="entry-subtitle"><i class="bi bi-person"></i> {{ entry.entry_username }}</div>
-                    {# Do NOT show password area #}
-                </div>
-                 <div class="entry-actions">
-                    {# Admin Delete Entry Form #}
-                    <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline">
-                        <button type="submit" class="action-btn-icon-only delete-btn" onclick="return confirm('ADMIN ACTION: Delete entry \'{{ entry.laptop_server }}\' for user {{ target_user.username }}?');" title="Admin Delete Entry"><i class="bi bi-trash-fill"></i></button>
-                    </form>
-                 </div>
-            </div>
-            {% endfor %}
-        {% else %}
-        <div class="alert alert-info mt-3">
-            This user has no vault entries.
-        </div>
-        {% endif %}
+    <div class="card"> {# Wrap table in card #}
+     <div class="table-wrapper">
+        <table class="table">
+            <thead class="table-light"> <tr> <th>Laptop/Server ID</th> <th>Brand/Label</th> <th>Username</th> <th class="text-center">Actions</th> </tr> </thead>
+            <tbody>
+                {% if entries %}
+                    {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.laptop_server }}</td>
+                        <td>{{ entry.brand_label or '-' }}</td>
+                        <td>{{ entry.entry_username }}</td>
+                        <td class="text-center"> <form method="POST" action="{{ url_for('delete_entry', entry_id=entry._id) }}" class="d-inline"> <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('ADMIN ACTION: Delete entry \'{{ entry.laptop_server }}\' for user {{ target_user.username }}?');"><i class="bi bi-trash"></i> Delete Entry</button> </form> </td>
+                    </tr>
+                    {% endfor %}
+                {% else %} <tr> <td colspan="4" class="text-center text-muted py-4">This user has no vault entries.</td> </tr> {% endif %}
+            </tbody>
+        </table>
     </div>
-
+   </div>
 </div>
 {% endblock %}

@@ -1,26 +1,37 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark"> {# Using dark theme base for public pages too #}
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quantum Vault{% endblock %}</title>
-    {# --- CRUCIAL CSS LINK --- #}
+    {# Link the DARK THEME CSS #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v3.css') }}">
-    {# --- END CRUCIAL LINK --- #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    {# Removed duplicate inline styles - they are in quantum-v3.css #}
 </head>
 <body>
     <div class="public-container">
         <div class="public-card">
-            {# Flash Messages #}
+            {# Display flashed messages using Bootstrap structure #}
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %} {% for category, message in messages %} {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %} <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert"> {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>{% else %}<i class="bi bi-info-circle-fill"></i>{% endif %} {{ message }} <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button> </div> {% endfor %} {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
+                         <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
+                            {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill me-2"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
-            {# Main Content Block #}
-            {% block content %}{% endblock %}
+
+            {% block content %}{% endblock %} {# Where login/signup form goes #}
         </div>
     </div>
-    <div class="fixed-logo"> <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo"> </div>
+    <div class="fixed-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     {% block scripts %}{% endblock %}
 </body>

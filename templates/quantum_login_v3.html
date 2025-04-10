@@ -1,22 +1,11 @@
-{% extends "public_base_v3.html" %} {# <-- Make sure this uses V3 #}
-
+{% extends "public_base_v3.html" %}
 {% block title %}Login - Quantum Vault{% endblock %}
-
 {% block content %}
     <h1 class="public-title">Login to Quantum Vault</h1>
-    {# Action uses url_for now #}
     <form method="POST" action="{{ url_for('login') }}">
-        <div class="form-group">
-            <label for="username" class="form-label">Username:</label>
-            <input type="text" class="form-input" id="username" name="username" required>
-        </div>
-        <div class="form-group">
-            <label for="password" class="form-label">Master Password:</label>
-            <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password">
-        </div>
+        <div class="form-group"> <label for="username" class="form-label">Username:</label> <input type="text" class="form-input" id="username" name="username" required> </div>
+        <div class="form-group"> <label for="password" class="form-label">Master Password:</label> <input type="password" class="form-input" id="password" name="password" required autocomplete="current-password"> </div>
         <button type="submit" class="btn btn-primary w-100 mt-3">Login</button>
     </form>
-    <p class="mt-4 text-center">
-        Don't have an account? <a href="{{ url_for('signup') }}">Sign up here</a>. {# Use url_for #}
-    </p>
+    <p class="mt-4 text-center"> Don't have an account? <a href="{{ url_for('signup') }}">Sign up here</a>. </p>
 {% endblock %}

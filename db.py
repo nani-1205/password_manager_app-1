@@ -4,7 +4,7 @@ import config # For DB connection details and collection names
 from bson import ObjectId # For converting string IDs to MongoDB ObjectIds
 import re # For regular expression searches
 
-# Global variables for connection and db object
+# Global variables to hold the client and database connections
 _client = None
 _db = None
 
@@ -275,7 +275,7 @@ def get_vault_entries(user_id, search_term=None): # For user's own vault view
         return entries
     except Exception as e:
         print(f"Error retrieving own vault entries user '{user_id}' (search: '{search_term}'): {e}")
-        return []
+        return [] # Return empty list on error
 
 def get_vault_entries_for_user(target_user_id): # Admin view metadata
      """Admin function to get METADATA (no password) of another user's entries."""
