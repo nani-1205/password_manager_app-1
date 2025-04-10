@@ -1,38 +1,61 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="dark"> {# Using Bootstrap dark theme attributes #}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Quantum Vault{% endblock %}</title>
-    {# Link the DARK THEME CSS #}
+    <title>{% block title %}Quantum Vault{% endblock %}</title> {# Default title block #}
+
+    {# Link the correct V3 CSS file using url_for #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quantum-v3.css') }}">
+
+    {# Link Bootstrap Icons CDN #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    {# Removed duplicate inline styles - they are in quantum-v3.css #}
+
+    {# Removed inline styles - all styles should be in quantum-v3.css #}
+    {# Add any page-specific head elements in inheriting templates #}
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
+    {# Main container for public pages (login, signup, etc.) #}
     <div class="public-container">
-        <div class="public-card">
-            {# Display flashed messages using Bootstrap structure #}
+        <div class="public-card"> {# Card styling applied via CSS #}
+
+            {# Flash Message Display Area #}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
+                        {# Map category to Bootstrap alert type #}
                         {% set alert_class = 'info' %}{% if category == 'error' %}{% set alert_class = 'danger' %}{% elif category == 'success' %}{% set alert_class = 'success' %}{% elif category == 'warning' %}{% set alert_class = 'warning' %}{% endif %}
                          <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                            {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>{% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill me-2"></i>{% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>{% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
-                            <span>{{ message }}</span>
+                            {# Add corresponding Bootstrap Icon #}
+                            {% if alert_class == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+                            {% elif alert_class == 'danger' %}<i class="bi bi-x-octagon-fill me-2"></i>
+                            {% elif alert_class == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
+                            <span>{{ message }}</span> {# Display the flash message #}
+                            {# Custom checkmark dismiss button #}
                             <button type="button" class="alert-check-dismiss" data-bs-dismiss="alert" aria-label="Acknowledge">✓</button>
                         </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
+            {# End Flash Messages #}
 
-            {% block content %}{% endblock %} {# Where login/signup form goes #}
-        </div>
-    </div>
+            {# Main content block for inheriting templates #}
+            {% block content %}{% endblock %}
+
+        </div> {# End public-card #}
+    </div> {# End public-container #}
+
+    {# Fixed Logo Area #}
     <div class="fixed-logo">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="App Logo">
     </div>
+
+    {# Bootstrap JavaScript Bundle (Popper included) - Essential for dismissible alerts, modals, etc. #}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    {# Block for page-specific scripts #}
     {% block scripts %}{% endblock %}
 </body>
 </html>
