@@ -42,41 +42,6 @@ Quantum Vault is a self-hostable, web-based password manager built with Python (
 *   **Frontend:** HTML, CSS, JavaScript, Bootstrap 5 (CDN), Bootstrap Icons (CDN)
 *   **Process Management (Example):** PM2 (Optional, for running in background)
 
-## Project Structure
-
-password_manager_web/
-├── newenv/ # Virtual environment
-├── static/
-│ ├── css/
-│ │ ├── quantum-v3.css # Main app dark theme
-│ │ └── quantum-admin-v4.css # Admin panel light theme
-│ ├── images/
-│ │ └── logo.png # Application logo
-│ └── js/
-│ └── vault-v3.js # Frontend JavaScript
-├── templates/
-│ ├── partials/
-│ │ └── _add_edit_modal.html # Reusable modal for Add/Edit
-│ ├── logged_in_base_v3.html # Base template for V3 (dark)
-│ ├── logged_in_base_v4.html # Base template for V4 (light admin)
-│ ├── public_base_v3.html # Base template for public V3 (dark)
-│ ├── quantum_admin_users.html # Admin: User list page (V4)
-│ ├── quantum_admin_view_vault.html # Admin: View user's vault (V4)
-│ ├── quantum_login_v3.html # Login page (V3)
-│ ├── quantum_login_2fa_v3.html # 2FA verification page (V3)
-│ ├── quantum_setup_2fa_v3.html # 2FA setup page (V3)
-│ ├── quantum_signup_v3.html # Signup page (V3)
-│ └── quantum_vault_v3.html # Main vault dashboard (V3)
-├── .env # Stores configuration secrets (DB URI, Secret Key)
-├── .gitignore # Git ignore rules
-├── config.py # Loads configuration from .env
-├── db.py # MongoDB interaction logic
-├── encryption.py # Hashing and encryption logic
-├── requirements.txt # Python dependencies
-├── utils.py # Utility functions (password gen, QR code)
-└── web_app.py # Main Flask application logic and routes
-
-
 
 ## Setup and Installation
 
