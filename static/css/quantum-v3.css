@@ -92,7 +92,7 @@ body { background-color: var(--dark-bg); color: var(--text); min-height: 100vh; 
 .section-title{font-weight:600;font-size:20px;margin-bottom:20px;color:var(--text);padding-bottom:10px;border-bottom:1px solid var(--border-light); display: flex; align-items: center; gap: 8px;}
 .admin-badge{background-color:var(--admin);color:white;font-size:11px;padding:2px 6px;border-radius:4px;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;margin-left: 8px;}
 .entries-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:18px;align-content:start;}
-.entry-list{display:flex;flex-direction:column;gap:12px;} /* Added for consistency if using list */
+.entry-list{display:flex;flex-direction:column;gap:12px;}
 
 /* --- Entry Card/Item --- */
 .password-entry{background-color:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;align-items:flex-start;gap:16px;transition:all 0.2s ease;position:relative;}
@@ -139,7 +139,6 @@ body { background-color: var(--dark-bg); color: var(--text); min-height: 100vh; 
 .input-group .btn { position: relative; z-index: 2; border-color: var(--border) !important; padding: 0.75rem; }
 .input-group > .form-input:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .input-group > :not(:first-child):not(.dropdown-menu) { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-
 
 /* --- Modal --- */
 .modal.fade { display: none; } /* Explicitly hide modal by default */
@@ -194,18 +193,18 @@ body { background-color: var(--dark-bg); color: var(--text); min-height: 100vh; 
 a { color: var(--primary); text-decoration: none; }
 a:hover { color: var(--primary-light); text-decoration: none;}
 
-/* Admin User List Table Specific Styles */
+/* --- Admin User List Table Specific Styles --- */
 .table-wrapper { overflow-x: auto; }
-.user-list { background-color: var(--panel-bg); border-radius: 8px; overflow: hidden; margin-top: 20px; border: 1px solid var(--border);} /* Use panel-bg */
-.user-list-header { display: grid; grid-template-columns: 1fr minmax(100px, auto) minmax(100px, auto) 80px 120px; /* Adjust cols */ padding: 12px 16px; background-color: var(--card-bg); /* Darker header */ font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+.user-list { background-color: var(--panel-bg); border-radius: 8px; overflow: hidden; margin-top: 20px; border: 1px solid var(--border);}
+.user-list-header { display: grid; grid-template-columns: 1fr minmax(100px, auto) minmax(100px, auto) 80px 120px; /* Adjust columns */ padding: 12px 16px; background-color: var(--card-bg); /* Darker header */ font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
 .user-list-item { display: grid; grid-template-columns: 1fr minmax(100px, auto) minmax(100px, auto) 80px 120px; /* Match header */ padding: 12px 16px; align-items: center; border-bottom: 1px solid var(--border); }
 .user-list-item:last-child { border-bottom: none; }
-.user-list-item:hover { background-color: rgba(var(--bs-primary-rgb), 0.05); } /* Subtle hover */
+.user-list-item:hover { background-color: rgba(var(--bs-primary-rgb, 110, 86, 207), 0.05); } /* Subtle hover */
 .role-select { padding: 0.25rem 0.5rem; font-size: 13px; border-radius: 0.375rem; border: 1px solid var(--border); background-color: var(--dark-bg); max-width: 100px; color: var(--text); }
 .role-select:disabled { background-color: #333; cursor: not-allowed; opacity: 0.7;}
 .form-btn-group { display: inline-flex; align-items: center; gap: 0.25rem; }
 .form-btn-group .btn { padding: 0.3rem 0.5rem; }
-.badge { padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 11px; font-weight: 600; display: inline-block; line-height: 1.2; text-transform: uppercase; letter-spacing: 0.5px;} /* Adjusted badge */
+.badge { padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 11px; font-weight: 600; display: inline-block; line-height: 1.2; text-transform: uppercase; letter-spacing: 0.5px;}
 .badge-success { background-color: rgba(var(--bs-success-rgb), 0.15); color: var(--success); }
 .badge-danger { background-color: rgba(var(--bs-danger-rgb), 0.15); color: var(--danger); }
 .badge-warning { background-color: rgba(var(--bs-warning-rgb), 0.15); color: var(--warning); }
@@ -214,7 +213,6 @@ a:hover { color: var(--primary-light); text-decoration: none;}
 .badge-role-admin { background-color: rgba(var(--admin), 0.2); color: var(--admin); }
 .action-btn-group { display: flex; gap: 0.5rem; align-items: center; justify-content: center;}
 .action-btn-group form { display: inline-flex; }
-/* Adjust action button appearance for admin table */
 .user-list-item .action-btn { padding: 0.4rem; border-radius: 0.375rem; border: 1px solid var(--border); background-color: var(--card-bg); color: var(--text-secondary); }
 .user-list-item .action-btn:hover { background-color: var(--border-light); color: var(--text); }
 .user-list-item .action-danger:hover { background-color: rgba(var(--bs-danger-rgb), 0.1); border-color: var(--danger);}
